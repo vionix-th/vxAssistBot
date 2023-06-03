@@ -3,12 +3,6 @@ const { Configuration, OpenAIApi } = require('openai');
 const { program } = require('commander');
 require('colors');
 
-function sleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
 class AIInterface {
   constructor(apiKey) {
     const configuration = new Configuration({
@@ -16,15 +10,33 @@ class AIInterface {
     });
     this.client = new OpenAIApi(configuration);
     this.messages = [];
-  }  
+  }
 
-  async createCompletion(system, user, temperature) {
-    await sleep(21000);
+  async sleep(ms) {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+  }
 
-    system && system.forEach(i => {
+  expandArguments(prompt, args) {
+
+    args = args || {};
+
+    return prompt.map(i => {
+      Object.keys(args).forEach(j => {
+        i = i.replace("{%" + j + "%}", args[j]);
+      });
+      return i;
+    });
+  };
+
+  async createCompletion(system, user, temperature, parameter) {
+    await this.sleep(21000);
+
+    system && this.expandArguments(system, parameter).forEach(i => {
       this.messages.push({ role: 'system', content: i });
     });
-    user && user.forEach(i => {
+    user && this.expandArguments(user, parameter).forEach(i => {
       this.messages.push({ role: 'user', content: i });
     });
 
@@ -41,19 +53,19 @@ class AIInterface {
         n: 1,
       });
 
-      response.data.choices.forEach(i => { 
-        content.push(i.message.content); 
+      response.data.choices.forEach(i => {
+        content.push(i.message.content);
         this.messages.push(i.message);
       });
 
-  } catch(error) {
-    if (error.response) {
-      console.log(error.response.status);
-      console.log(error.response.data);
-    } else {
-      console.log(error.message);
+    } catch (error) {
+      if (error.response) {
+        console.log(error.response.status);
+        console.log(error.response.data);
+      } else {
+        console.log(error.message);
+      }
     }
-  }
 
     return content;
   }
@@ -111,19 +123,27 @@ async function main() {
 
   console.log(editorPersona.role.join("\n").red);
   console.log("\n");
-  console.log(editorPersona.prompt.join("\n").red);
-  console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>".red);
-  let editorResponse = await editorAI.createCompletion(editorPersona.role, editorPersona.prompt, editorPersona.temperature);
-  console.log(editorResponse.join("\n").blue);
-  console.log("--------------------------------".blue);
+  let editorResponse = '';
+  for (let i = 0; i < editorPersona.prompt.length; i++) {
+    const prompt = editorPersona.prompt[i];
+    console.log(editorAI.expandArguments(prompt, parameter).join("\n").red);
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>".red);
+    let editorResponse = await editorAI.createCompletion(i == 0 ? editorPersona.role : null, prompt, editorPersona.temperature, parameter);
+    console.log(editorResponse.join("\n").blue);
+    console.log("--------------------------------".blue);
+  }
 
   console.log(writerPersona.role.join("\n").red);
   console.log("\n");
-  console.log(writerPersona.prompt.join("\n").red);
-  console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>".red);
-  let writerResponse = await writerAI.createCompletion(writerPersona.role, writerPersona.prompt, writerPersona.temperature);
-  console.log(writerResponse.join("\n").green);
-  console.log("--------------------------------".green);
+  let writerResponse = '';
+  for (let i = 0; i < writerPersona.prompt.length; i++) {
+    const prompt = writerPersona.prompt[i];
+    console.log(writerAI.expandArguments(prompt, parameter).join("\n").red);
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>".red);
+    writerResponse = await writerAI.createCompletion(i == 0 ? writerPersona.role : null, prompt, writerPersona.temperature, parameter);
+    console.log(writerResponse.join("\n").green);
+    console.log("--------------------------------".green);
+  }
 
   for (let i = 0; i < iterations; i++) {
     console.log(`Iteration ${i + 1}`);
