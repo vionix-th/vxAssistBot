@@ -1,8 +1,7 @@
-import AIInterface from './AIInterface';
+const { AIInterface } = require('./AIInterface.js');
 const { program } = require('commander');
 const fs = require('fs');
 require('colors');
-
 
 function readPersonaFile(filePath) {
   const personaData = fs.readFileSync(filePath, 'utf-8');
