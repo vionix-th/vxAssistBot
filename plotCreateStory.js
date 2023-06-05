@@ -6,7 +6,7 @@ require('colors');
 function readPersonaFile(filePath) {
   const personaData = fs.readFileSync(filePath, 'utf-8');
   return {
-    name: 'Bob',
+    name: 'Assistant',
     temperature: '0.5',
     role: '',
     prompt: '',
@@ -54,7 +54,6 @@ async function main() {
   const editorAI = new AIInterface(apiKey);
 
   console.log(editorPersona.role.join("\n").red);
-  console.log("\n");
   let editorResponse = '';
   for (let i = 0; i < editorPersona.prompt.length; i++) {
     const prompt = editorPersona.prompt[i];
@@ -66,7 +65,6 @@ async function main() {
   }
 
   console.log(writerPersona.role.join("\n").red);
-  console.log("\n");
   let writerResponse = '';
   for (let i = 0; i < writerPersona.prompt.length; i++) {
     const prompt = writerPersona.prompt[i];
@@ -89,7 +87,15 @@ async function main() {
     console.log("--------------------------------".green);
   }
 
-  const filename = generateFilename(writerPersona, editorPersona, 'title');
+  let title = 'Unknown Story';
+  writerResponse.forEach(i => {
+    const result = i.match(/^TITLE: (.+)/mg);
+    if(result){
+      title = result[0];
+    }
+  }); 
+
+  const filename = generateFilename(writerPersona, editorPersona, title);
   saveContentToFile(filename, writerResponse);
 }
 

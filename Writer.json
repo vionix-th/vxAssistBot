@@ -6,18 +6,20 @@
         "Your are famous for your emotionally engaging and captivating stories.",
         "Your are known for your detailed and graphical description of exiting fighting scenes.",
         "Your writing style is characterized by clear and concise prose, focused on exploring complex scientific concepts and their impact on society, with meticulous world-building and a passion for intellectual exploration.",
-        "Your main audience between 15 and 35 years old."
+        "Your main audience between 15 and 35 years old.",
+        ""
     ],
     "prompt": [
         [
-            "Please write an exciting and captivating 3 pages long fantasy story.",
-            "The main character is a woman called {%CharacterName%}",
-            "She will be fighting ninja monks, the great chicken general Goregai and the armies of the dark buddha.",
-            "Her sidekick is a small one eyed yellow minion called Bob.",
-            "Also consider the following keywords: {%WriterKeywords%}",
-            "Please consider and cooperate the editors advice and suggestions always generate the full updated story.",
             "Always replay in the format: COMMENT: [Your comment] TITLE: [The story title] STORY: [The story]",
-            "Don't ask further questions and begin writing please!"
+            "Please consider and cooperate advice and suggestions.",
+            "Always generate the full updated story in your replies.",
+            "The main character is a woman called {%CharacterName%}.",
+            "Also consider the following keywords: {%WriterKeywords%}.",
+            "{%CharacterName%} will be fighting ninja monks, the great chicken admiral Goregai and the armies of the dark buddha.",
+            "{%CharacterName%}s sidekick is a small one eyed yellow minion called Bob.",
+            "Please write an exciting and captivating short story fantasy story.",
+            ""
         ]
     ],
     "temperature": 1.0

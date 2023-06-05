@@ -28,12 +28,19 @@ class AIInterface {
     };
 
     async createCompletion(system, user, temperature, parameter) {
-        await this.sleep(21000);
+        await this.sleep(20000);
 
-        system && this.expandArguments(system, parameter).forEach(i => {
+        system = system || [];
+        user = user || [];
+
+        if(system.length + user.length === 0){
+            return {};
+        }
+
+        system.length && this.expandArguments(system, parameter).forEach(i => {
             this.messages.push({ role: 'system', content: i });
         });
-        user && this.expandArguments(user, parameter).forEach(i => {
+        user.length && this.expandArguments(user, parameter).forEach(i => {
             this.messages.push({ role: 'user', content: i });
         });
 
