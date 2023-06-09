@@ -1,4 +1,5 @@
 const { Configuration, OpenAIApi } = require('openai');
+const axios = require('axios');
 const fs = require('fs');
 require('colors');
 
@@ -159,6 +160,8 @@ class AIInterface {
                 frequency_penalty: 0.0,
                 presence_penalty: 0.0,
                 n: 1,
+            },{
+                timeout: 180000
             });
 
             response.data.choices.forEach(i => {
@@ -178,6 +181,31 @@ class AIInterface {
 
         return content;
     }
+
+    async createImage(prompt) {
+        let retryCount = 0;
+        while (retryCount < 3) {
+            try {
+                const response = await this.client.createImage({
+                    prompt,
+                    n: 1,
+                    size: "1024x1024",
+                });
+                const image = await axios.get(response.data.data[0].url, {
+                    responseType: 'arraybuffer'
+                });
+
+                return image.data;
+            } catch (error) {
+                console.log(`Error occurred while creating image: ${error.message}`);
+                retryCount++;
+                if (retryCount >= 3) {
+                    throw error;
+                }
+            }
+        }
+    }
+
 }
 
 module.exports = {

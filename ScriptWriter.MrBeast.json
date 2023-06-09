@@ -11,9 +11,11 @@
             "Hello Mr.Beast, please introduce yourself."
         ],
         [
-            "Please create a new script and for each scene add timestamps (begin, end), visuals and audio.",
-            "Provide a detailed description of the artistic style and the sound design for all visuals and all audio elements.",
-            "Format output as JSON: {%ARTICLE%}",
+            "Please create a new script and for each scene add timestamps, visuals and audio.",            
+            "Visuals will be composed of ai generated images that follow your description. Use 3 image per scene.",
+            "Provide a detailed description of the depicted content and the artistic style for each visual component.",
+            "Format output as JSON: { title, scenes: [ { begin, end, duration, visuals: [ description ], artistic_style, audio: [ description ], sound_design } ] }",
+            "Here is the article: {%ARTICLE%}",
             ""
         ]
     ],
