@@ -1,4 +1,5 @@
 const { Configuration, OpenAIApi } = require('openai');
+const { HfInference } = require("@huggingface/inference")
 const axios = require('axios');
 const fs = require('fs');
 require('colors');
@@ -160,13 +161,13 @@ class AIInterface {
                 frequency_penalty: 0.0,
                 presence_penalty: 0.0,
                 n: 1,
-            },{
+            }, {
                 timeout: 180000
             });
 
             response.data.choices.forEach(i => {
                 content.push(i.message.content);
-                this.messages.push(i.message);
+                this.messages.push(i.message); npm
             });
 
             this.accountLimits();
@@ -182,12 +183,12 @@ class AIInterface {
         return content;
     }
 
-    async createImage(prompt) {
+    async createImage(prompt, parameter) {
         let retryCount = 0;
         while (retryCount < 3) {
             try {
                 const response = await this.client.createImage({
-                    prompt,
+                    prompt: this.expandArguments([prompt], parameter)[0],
                     n: 1,
                     size: "1024x1024",
                 });
@@ -196,14 +197,39 @@ class AIInterface {
                 });
 
                 return image.data;
-            } catch (error) {
-                console.log(`Error occurred while creating image: ${error.message}`);
+            } catch (error) {                
                 retryCount++;
                 if (retryCount >= 3) {
                     throw error;
+                }else{
+                    console.log(`createImage: ${error.message}`);
                 }
             }
         }
+    }
+
+    async text2Speech(prompt) {
+        const apiKey = this.readApiKey('apikeyHuggingFace');
+        const hf = new HfInference(apiKey);
+        var result = null;
+
+        let retryCount = 0;
+        while (retryCount < 3) {
+            try {
+                result = await hf.textToSpeech({
+                    model: 'facebook/fastspeech2-en-ljspeech',
+                    inputs: prompt
+                })
+            } catch (error) {
+                if(retryCount++ >= 3) {
+                    throw error;
+                }else{
+                    console.log(`text2Speech: ${error.message}`);
+                }
+            }
+        }
+
+        return result;
     }
 
 }
