@@ -167,7 +167,7 @@ class AIInterface {
 
             response.data.choices.forEach(i => {
                 content.push(i.message.content);
-                this.messages.push(i.message); npm
+                this.messages.push(i.message);
             });
 
             this.accountLimits();
@@ -197,12 +197,10 @@ class AIInterface {
                 });
 
                 return image.data;
-            } catch (error) {                
+            } catch (error) {
                 retryCount++;
                 if (retryCount >= 3) {
                     throw error;
-                }else{
-                    console.log(`createImage: ${error.message}`);
                 }
             }
         }
@@ -211,20 +209,22 @@ class AIInterface {
     async text2Speech(prompt) {
         const apiKey = this.readApiKey('apikeyHuggingFace');
         const hf = new HfInference(apiKey);
-        var result = null;
+        var result = [];
 
         let retryCount = 0;
         while (retryCount < 3) {
-            try {
-                result = await hf.textToSpeech({
-                    model: 'facebook/fastspeech2-en-ljspeech',
-                    inputs: prompt
-                })
-            } catch (error) {
-                if(retryCount++ >= 3) {
-                    throw error;
-                }else{
-                    console.log(`text2Speech: ${error.message}`);
+            for (let input of prompt.split('\n\n')) {
+                try {
+                    let paragraph = await hf.textToSpeech({
+                        model: 'facebook/fastspeech2-en-ljspeech',
+                        inputs: input
+                    })
+                    result.push(paragraph);
+                } catch (error) {
+                    retryCount++;
+                    if (retryCount >= 3) {
+                        throw error;
+                    }
                 }
             }
         }
