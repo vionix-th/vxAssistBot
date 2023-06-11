@@ -11,7 +11,8 @@ class AIInterface {
      * Constructs an instance of the AIInterface.
      * @param {string} apiKey - The API key for the OpenAI GPT-3 API.
      */
-    constructor(apiKey) {
+    constructor({ persona, apiKey }) {
+
         if (!apiKey) {
             apiKey = readApiKey('apikey.txt');
         }
@@ -24,6 +25,17 @@ class AIInterface {
         this.queryCount = 0;
         this.queryLimit = 30;
         this.queryInterval = 60000;
+        this.initializingAgent = 0;
+        this.persona = {
+            ...{
+                "name": "AIInterface",
+                "temperature": 0.5,
+                "role": [],
+                "prompt": [[]],
+                "persistentPrompt": []
+            },
+            ...persona
+        };
     }
 
     /**
@@ -80,19 +92,24 @@ class AIInterface {
     async initializeAgent(persona, parameter, callback) {
         var response = [];
 
+        this.initializingAgent = 1;
+        this.persona = {...persona}
+
         // Assign the persona to the agents  
         this.assignRole(persona.role, parameter);
 
         console.log(persona.role.join("\n").yellow);
-        for (let i = 0; i < persona.prompt.length; i++) {
+        for (let i = 0; i < persona.initialPrompt.length; i++) {
             // Complete the initialization prompts for the editor agent
-            const prompt = persona.prompt[i];
+            const prompt = persona.initialPrompt[i];
             console.log(this.expandArguments(prompt, parameter).join("\n").red);
             console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>".red);
 
-            response = await this.createCompletion(prompt, persona.temperature, parameter);
+            response = await this.createCompletion(prompt, parameter);
             callback && callback({ persona, parameter, response });
         }
+
+        this.initializingAgent = 0;
 
         return response;
     }
@@ -131,7 +148,7 @@ class AIInterface {
      * @param {object} parameter - Additional parameters for expanding the user input.
      * @returns {Array<string>} The generated completion from the AI model.
      */
-    async createCompletion(user, temperature, parameter) {
+    async createCompletion(user, parameter) {
         if (!user || user.length === 0) {
             return [];
         }
@@ -142,13 +159,19 @@ class AIInterface {
             this.messages.push({ role: 'user', content: i });
         });
 
+        if (!this.initializingAgent) {
+            this.persona.persistentPrompt.forEach(i => {
+                this.messages.push({ role: 'user', content: i });  
+            });
+        }
+
         var content = [];
 
         try {
             const response = await this.client.createChatCompletion({
                 model: 'gpt-3.5-turbo',
                 messages: [...this.messages],
-                temperature: temperature,
+                temperature: this.persona.temperature,
                 top_p: 1.0,
                 frequency_penalty: 0.0,
                 presence_penalty: 0.0,
