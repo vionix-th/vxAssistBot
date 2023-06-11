@@ -1,8 +1,10 @@
 const { Configuration, OpenAIApi } = require('openai');
-const { HfInference } = require("@huggingface/inference")
 const axios = require('axios');
 const fs = require('fs');
 require('colors');
+const { readApiKey } = require("./vxAssistCommon");
+const { AIHuggingFace } = require("./AIHuggingFace");
+const { AILocalSystem } = require("./AILocalSystem");
 
 class AIInterface {
     /**
@@ -11,7 +13,7 @@ class AIInterface {
      */
     constructor(apiKey) {
         if (!apiKey) {
-            apiKey = this.readApiKey('apikey.txt');
+            apiKey = readApiKey('apikey.txt');
         }
         const configuration = new Configuration({
             apiKey
@@ -22,16 +24,6 @@ class AIInterface {
         this.queryCount = 0;
         this.queryLimit = 30;
         this.queryInterval = 60000;
-    }
-
-    /**
-     * Reads the API key from a file.
-     * @param {string} filePath - The path to the API key file.
-     * @returns {string} The API key.
-     */
-    readApiKey(filePath) {
-        const apiKey = fs.readFileSync(filePath, 'utf-8');
-        return apiKey;
     }
 
     /**
@@ -207,31 +199,25 @@ class AIInterface {
     }
 
     async text2Speech(prompt) {
-        const apiKey = this.readApiKey('apikeyHuggingFace');
-        const hf = new HfInference(apiKey);
-        var result = [];
+
+        const backends = {
+            localSystem: new AILocalSystem(),
+            huggingFace: new AIHuggingFace()
+        };
+        const backend = backends['localSystem']
 
         let retryCount = 0;
         while (retryCount < 3) {
-            for (let input of prompt.split('\n\n')) {
-                try {
-                    let paragraph = await hf.textToSpeech({
-                        model: 'facebook/fastspeech2-en-ljspeech',
-                        inputs: input
-                    })
-                    result.push(paragraph);
-                } catch (error) {
-                    retryCount++;
-                    if (retryCount >= 3) {
-                        throw error;
-                    }
+            try {
+                return await backend.text2Speech(prompt);
+            } catch (error) {
+                retryCount++;
+                if (retryCount >= 3) {
+                    throw error;
                 }
             }
         }
-
-        return result;
     }
-
 }
 
 module.exports = {

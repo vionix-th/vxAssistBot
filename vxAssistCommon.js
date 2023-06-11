@@ -23,8 +23,19 @@ function saveContentToFile(filename, content) {
     console.log(`Content saved to file: ${filename}`);
 }
 
+/**
+ * Reads the API key from a file.
+ * @param {string} filePath - The path to the API key file.
+ * @returns {string} The API key.
+ */
+function readApiKey(filePath) {
+    const apiKey = fs.readFileSync(filePath, 'utf-8');
+    return apiKey;
+}
+
 module.exports = {
     readPersonaFile,
     generateFilename,
-    saveContentToFile
+    saveContentToFile,
+    readApiKey
 };
