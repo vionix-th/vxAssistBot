@@ -58,13 +58,13 @@ class AIInterface {
      */
     expandArguments(prompt, args) {
         const expand = arg => {
-            if(arg.startsWith("file://")){
+            if (arg.startsWith("file://")) {
                 arg = arg.replace("file://", "");
                 arg = fs.readFileSync(arg);
             }
 
             return arg;
-        } 
+        }
 
         return prompt.map(i => {
             Object.keys(args).forEach(j => {
@@ -106,7 +106,7 @@ class AIInterface {
         this.initializingAgent = 1;
 
         if (persona) {
-            this.persona = {...this.persona, ...persona};
+            this.persona = { ...this.persona, ...persona };
         }
 
         // Assign the persona to the agents  
@@ -175,37 +175,44 @@ class AIInterface {
 
         if (!this.initializingAgent) {
             this.persona.persistentPrompt.forEach(i => {
-                this.messages.push({ role: 'user', content: i });  
+                this.messages.push({ role: 'user', content: i });
             });
         }
 
         var content = [];
 
-        try {
-            const response = await this.client.createChatCompletion({
-                model: 'gpt-3.5-turbo',
-                messages: [...this.messages],
-                temperature: this.persona.temperature,
-                top_p: 1.0,
-                frequency_penalty: 0.0,
-                presence_penalty: 0.0,
-                n: 1,
-            }, {
-                timeout: 180000
-            });
+        let retryCount = 0;
+        while (retryCount < 3) {
+            try {
+                const response = await this.client.createChatCompletion({
+                    model: 'gpt-3.5-turbo',
+                    messages: [...this.messages],
+                    temperature: this.persona.temperature,
+                    top_p: 1.0,
+                    frequency_penalty: 0.0,
+                    presence_penalty: 0.0,
+                    n: 1,
+                }, {
+                    timeout: 180000
+                });
 
-            response.data.choices.forEach(i => {
-                content.push(i.message.content);
-                this.messages.push(i.message);
-            });
+                response.data.choices.forEach(i => {
+                    content.push(i.message.content);
+                    this.messages.push(i.message);
+                });
 
-            this.accountLimits();
-        } catch (error) {
-            if (error.response) {
-                console.log(error.response.status);
-                console.log(error.response.data);
-            } else {
-                console.log(error.message);
+                this.accountLimits();
+                break;
+            } catch (error) {
+                retryCount++;
+                if (retryCount >= 3) {
+                    if (error.response) {
+                        console.log(error.response.status);
+                        console.log(error.response.data);
+                    } else {
+                        console.log(error.message);
+                    }
+                }
             }
         }
 
