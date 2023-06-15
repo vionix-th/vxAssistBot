@@ -5,6 +5,7 @@ require('colors');
 const { readApiKey } = require("./vxAssistCommon");
 const { AIHuggingFace } = require("./AIHuggingFace");
 const { AILocalSystem } = require("./AILocalSystem");
+const { AIOpenAI } = require('./AIOpenAI');
 
 class AIInterface {
     /**
@@ -220,19 +221,16 @@ class AIInterface {
     }
 
     async createImage(prompt, parameter) {
+        const backends = {
+            openAi: new AIOpenAI(),
+            huggingFace: new AIHuggingFace()
+        };
+        const backend = backends['huggingFace']
+        
         let retryCount = 0;
         while (retryCount < 3) {
             try {
-                const response = await this.client.createImage({
-                    prompt: this.expandArguments([prompt], parameter)[0],
-                    n: 1,
-                    size: "1024x1024",
-                });
-                const image = await axios.get(response.data.data[0].url, {
-                    responseType: 'arraybuffer'
-                });
-
-                return image.data;
+                return await backend.createImage(this, prompt, parameter);
             } catch (error) {
                 retryCount++;
                 if (retryCount >= 3) {
