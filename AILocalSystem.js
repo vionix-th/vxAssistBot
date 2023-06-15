@@ -25,10 +25,9 @@ class AILocalSystem {
     fs.writeFileSync(tempTxtFilePath, prompt);
 
     var result = null;
-    var model = parameter.Text2SpeechModel ?  parameter.Text2SpeechModel : 'Ava';
 
     try {
-      result = await executeShellCommand(`say -v ${model} -o ${tempWavFilePath} -f ${tempTxtFilePath}`);
+      result = await executeShellCommand(`say -v ${parameter.Text2SpeechModel} -o ${tempWavFilePath} -f ${tempTxtFilePath}`);
 
       const data = fs.readFileSync(tempWavFilePath);
       result = new Blob([data], { type: 'application/octet-stream' });

@@ -14,8 +14,8 @@ function readPersonaFile(filePath) {
 function generateFilename(writer, editor, title, suffix) {
     const writerName = writer.name.replace(/\s+/g, '_');
     const editorName = editor.name.replace(/\s+/g, '_');
-    const filename = `${writerName}_${editorName}_${title}.${suffix}`;
-    return sanitizeString(filename);
+    const filename = `${writerName}_${editorName}_${sanitizeString(title)}.${suffix}`;
+    return filename;
 }
 
 function saveContentToFile(filename, content) {
@@ -35,25 +35,47 @@ function readApiKey(filePath) {
 
 function sanitizeString(input) {
     const replacements = [
-      ['ä', 'ae'],
-      ['ö', 'oe'],
-      ['ü', 'ue'],
-      ['ß', 'ss'],
-      [' ', '_']
+        ['ä', 'ae'],
+        ['ö', 'oe'],
+        ['ü', 'ue'],
+        ['ß', 'ss'],
+        [' ', '_']
     ];
-  
+
     let sanitized = input;
-  
+
     for (const [search, replace] of replacements) {
-      sanitized = sanitized.replace(new RegExp(search, 'gi'), replace);
+        sanitized = sanitized.replace(new RegExp(search, 'gi'), replace);
     }
-  
-    sanitized = sanitized.replace(/[^A-Za-z0-9_]/g, '');
-  
+
+    sanitized = sanitized.replace(/[^A-Za-z0-9_\.]/g, '');
+
     return sanitized;
-  }
+}
+
+function createDefaultParameters() {
+    return {
+        VisualStyle: null,
+        VisualStyleNegative: null,
+        Text2ImageAPI: 'huggingFace',
+        // Text2ImageAPI: 'openAi',
+        //Text2ImageModel: 'gsdf/Counterfeit-V2.5',
+        // Text2ImageModel: 'stabilityai/stable-diffusion-2-1',
+        // Text2ImageModel: 'dreamlike-art/dreamlike-photoreal-2.0',
+        // Text2ImageModel: 'dreamlike-art/dreamlike-diffusion-1.0'
+        // Text2ImageModel: 'dreamlike-art/dreamlike-anime-1.0'
+        Text2ImageModel: 'prompthero/openjourney',
+        // Text2ImageModel: 'hakurei/waifu-diffusion',
+        Text2SpeechAPI: 'localSystem',
+        // Text2SpeechAPI: 'huggingFace',
+        Text2SpeechModel: 'Ava',
+        // Text2SpeechModel: 'espnet/kan-bayashi_ljspeech_vits',
+        // Text2SpeechModel: 'facebook/fastspeech2-en-ljspeech',
+    };
+}
 
 module.exports = {
+    createDefaultParameters,
     sanitizeString,
     readPersonaFile,
     generateFilename,
