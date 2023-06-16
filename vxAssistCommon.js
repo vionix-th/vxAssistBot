@@ -57,13 +57,13 @@ function createDefaultParameters() {
     return {
         VisualStyle: null,
         VisualStyleNegative: null,
-        Text2ImageAPI: 'huggingFace',
         // Text2ImageAPI: 'openAi',
-        //Text2ImageModel: 'gsdf/Counterfeit-V2.5',
-        // Text2ImageModel: 'stabilityai/stable-diffusion-2-1',
+        Text2ImageAPI: 'huggingFace',
+        // Text2ImageModel: 'gsdf/Counterfeit-V2.5', // Anime
+        // Text2ImageModel: 'stabilityai/stable-diffusion-2-1', // Realistic
         // Text2ImageModel: 'dreamlike-art/dreamlike-photoreal-2.0',
         // Text2ImageModel: 'dreamlike-art/dreamlike-diffusion-1.0'
-        // Text2ImageModel: 'dreamlike-art/dreamlike-anime-1.0'
+        // Text2ImageModel: 'dreamlike-art/dreamlike-anime-1.0' // Anime, Erotic
         Text2ImageModel: 'prompthero/openjourney',
         // Text2ImageModel: 'hakurei/waifu-diffusion',
         Text2SpeechAPI: 'localSystem',
