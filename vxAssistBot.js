@@ -15,26 +15,52 @@ class vxAssistBotBot {
       help: {
         adminOnly: false,
         callback: this.handleHelp.bind(this),
+        description: 'List the available commands',
       },
       addadmin: {
         adminOnly: true,
         callback: this.handleAddAdmin.bind(this),
+        description: 'Grant admin privileges to a user',
       },
       removeadmin: {
         adminOnly: true,
         callback: this.handleRemoveAdmin.bind(this),
+        description: 'Revoke admin privileges for a user',
       },
       addwhitelistedgroup: {
         adminOnly: true,
         callback: this.handleAddWhiteListedGroup.bind(this),
+        description: 'Grant access to a group',
       },
       removewhitelistedgroup: {
         adminOnly: true,
         callback: this.handleRemoveWhiteListedGroup.bind(this),
+        description: 'Revoke access from a group',
+      },
+      setrole: {
+        adminOnly: true,
+        callback: this.handleSetRole.bind(this),
+        description: 'Set the AIs persona to a new role',
+      },
+      resetrole: {
+        adminOnly: true,
+        callback: this.handleResetRole.bind(this),
+        description: 'Restore default AI persona',
+      },
+      setparam: {
+        adminOnly: true,
+        callback: this.handleSetParameter.bind(this),
+        description: 'Setup the AIs parameters',
+      },
+      getparam: {
+        adminOnly: false,
+        callback: this.handleGetParameter.bind(this),
+        description: 'Get the AIs parameters',
       },
       genimg: {
         adminOnly: false,
         callback: this.handleGenerateImage.bind(this),
+        description: 'Create an image using generative AI',
       },
     };
   }
@@ -57,7 +83,7 @@ class vxAssistBotBot {
       this.bot.on('polling_error', (error) => console.log(error));
 
       this.bot.setMyCommands(Object.keys(this.commandCallbacks).map(i => {
-        return { command: i, description: 'hello' };
+        return { command: i, description: this.commandCallbacks[i].description };
       }), { scope: TelegramBot.BotCommandScopeAllGroupChats });
 
       console.log('Bot is running...');
@@ -123,9 +149,17 @@ class vxAssistBotBot {
       ? this.ai[msg.chat.id][aiId]
       : {
         uniqueAi: this.initializeUniqueAiRoleForChat(msg, new AIInterface()), config: {
+          aiEnabled: 'YES',
           alwaysReply: "YES",
           Text2ImageAPI: "huggingFace",
           Text2ImageModel: "dreamlike-art/dreamlike-anime-1.0",
+          Text2SpeechAPI: 'localSystem',
+          // Text2SpeechAPI: 'huggingFace',
+          Text2SpeechModel: 'Ava',
+          // Text2SpeechModel: 'espnet/kan-bayashi_ljspeech_vits',
+          VisualStyle: null,
+          VisualStyleCharacters: null,
+          VisualStyleNegative: null,
         }
       };
 
@@ -170,9 +204,10 @@ class vxAssistBotBot {
   }
 
   async completeMessageConditional(msg) {
-    if (!msg.text) { return }
-
     const { uniqueAi, config } = this.createUniqueAiForChat(msg);
+
+    if (!msg.text) { return }
+    if (config.aiEnabled !== "YES") { return }
 
     if (config.alwaysReply === "YES" || msg.text.includes(`@${this.botInfo.username}`)) {
       return uniqueAi.createCompletion([msg.text], {});
@@ -231,6 +266,39 @@ class vxAssistBotBot {
         console.log(msg);
         break;
     }
+  }
+
+  handleResetRole(msg, params) {
+    const { uniqueAi, config } = this.createUniqueAiForChat(msg);
+    this.initializeUniqueAiRoleForChat(msg, uniqueAi);
+    this.bot.sendMessage(msg.chat.id, 'AI persona reset to default', { message_thread_id: msg.message_thread_id });
+  }
+
+  handleSetRole(msg, params) {
+    const { uniqueAi, config } = this.createUniqueAiForChat(msg);
+
+    uniqueAi.assignRole([params.join('\n')], {});
+    this.bot.sendMessage(msg.chat.id, 'Assign a new persona to the AI', { message_thread_id: msg.message_thread_id });
+  }
+
+  handleSetParameter(msg, params) {
+    const { uniqueAi, config } = this.createUniqueAiForChat(msg);
+
+    if (!config[params[0]]) {
+      this.bot.sendMessage(msg.chat.id, `${params[0]} is not a valid option`, { message_thread_id: msg.message_thread_id });
+    } else {
+      config[params[0]] = params[1];
+      this.bot.sendMessage(msg.chat.id, `${params[0]} was set to ${params[1]}`, { message_thread_id: msg.message_thread_id });
+    }
+  }
+
+  handleGetParameter(msg, params) {
+    const { uniqueAi, config } = this.createUniqueAiForChat(msg);
+    const reply = [];
+    Object.keys(config).forEach(key => {
+      reply.push(`${key}: ${config[key]}`);
+    })
+    this.bot.sendMessage(msg.chat.id, reply.join('\n'), { message_thread_id: msg.message_thread_id });
   }
 
   handleGenerateImage(msg, params) {
