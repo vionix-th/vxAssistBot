@@ -233,12 +233,12 @@ class AIInterface {
         const backend = backends[parameter.Text2ImageAPI];
 
         let retryCount = 0;
-        while (retryCount < 3) {
+        while (retryCount < 9) {
             try {
                 return await backend.createImage(this, prompt, parameter);
             } catch (error) {
                 retryCount++;
-                if (retryCount >= 3) {
+                if (retryCount >= 9) {
                     throw error;
                 }
             }

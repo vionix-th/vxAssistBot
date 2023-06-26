@@ -1,6 +1,6 @@
 const TelegramBot = require('node-telegram-bot-api');
 const { AIInterface } = require('./AIInterface.js');
-const { extractJSON } = require('./vxAssistBotCommon.js');
+const { extractJSON } = require('./vxAssistCommon.js');
 const fs = require('fs');
 
 class vxAssistBotBot {
@@ -8,6 +8,7 @@ class vxAssistBotBot {
     this.bot = null;
     this.storageFile = 'botStorage.json';
     this.botToken = '';
+    this.alwaysReply = 1;
     this.whiteListedGroups = new Set();
     this.adminUsers = [];
     this.commandCallbacks = {
@@ -31,6 +32,10 @@ class vxAssistBotBot {
         adminOnly: true,
         callback: this.handleRemoveWhiteListedGroup.bind(this),
       },
+      genimg: {
+        adminOnly: false,
+        callback: this.handleGenerateImage.bind(this),
+      },
     };
   }
 
@@ -50,6 +55,10 @@ class vxAssistBotBot {
       this.botInfo = botInfo;
       this.bot.on('message', (msg) => this.handleMessage(msg));
       this.bot.on('polling_error', (error) => console.log(error));
+
+      this.bot.setMyCommands(Object.keys(this.commandCallbacks).map(i => {
+        return { command: i, description: 'hello' };
+      }), { scope: TelegramBot.BotCommandScopeAllGroupChats });
 
       console.log('Bot is running...');
     });
@@ -84,7 +93,7 @@ class vxAssistBotBot {
       const matches = text.match(regex);
 
       if (matches) {
-        const commandName = matches[1].toLowerCase();
+        const commandName = matches[1].replace(`@${this.botInfo.username}`, '').toLowerCase();
         const params = matches[2] ? matches[2].split(' ') : [];
         return { commandName, params };
       }
@@ -93,103 +102,146 @@ class vxAssistBotBot {
     return null;
   }
 
-  executeCommand(msg, commandName, params) {
+  async executeCommand(msg, commandName, params) {
     const command = this.commandCallbacks[commandName];
+    
     if (command) {
       if (command.adminOnly && !this.isAdminUser(msg.from.username)) {
-        this.bot.sendMessage(msg.chat.id, 'You do not have permission to execute this command.');
+        return this.bot.sendMessage(msg.chat.id, 'You do not have permission to execute this command.', { message_thread_id: msg.message_thread_id });
       } else {
-        try {
-          command.callback(msg, params);
-        } catch (error) {
-          console.error(error);
-          this.bot.sendMessage(msg.chat.id, 'An error occurred while executing the command.');
-        }
+        return command.callback(msg, params);
       }
     }
   }
 
+  createUniqueAiForChat(msg) {
+    const aiId = msg.message_thread_id ? msg.message_thread_id : msg.chat.id;
+
+    this.ai = this.ai ? this.ai : {};
+    this.ai[msg.chat.id] = this.ai[msg.chat.id] ? this.ai[msg.chat.id] : {};
+    this.ai[msg.chat.id][aiId] = this.ai[msg.chat.id][aiId] 
+      ? this.ai[msg.chat.id][aiId] 
+      : this.initializeUniqueAiRoleForChat(msg, new AIInterface());
+
+    return this.ai[msg.chat.id][aiId];
+  }
+
+  initializeUniqueAiRoleForChat(msg, uniqueAi) {
+    let topic = "General Discussion";
+
+    if (msg.reply_to_message && msg.reply_to_message.forum_topic_created) {
+      topic = msg.reply_to_message.forum_topic_created.name;
+    }
+
+    uniqueAi.assignRole([
+      `Your name is ${this.botInfo.first_name} ${this.botInfo.last_name}, Nickname ${this.botInfo.username}.`,
+      'You provide professional and concise advice to your audience and express yourself in an academic and formal manner.',
+      `You are an expert on ${topic} and related topics.`
+    ], {});
+
+    return uniqueAi;
+  }
+
+  async completeResponseProbabilities(msg, uniqueAi) {
+    const prompt = [
+      'Rate a group chat messages probability in percent (0-100) and for each of the following statements:',
+      '1. The message is directed to you',
+      '2. The message is directed to someboy else',
+      '3. The message is relevant',
+      '4. You should respond to this message',
+      '',
+      'Reply with only a JSON object using the format: { directed_at_me: probability, directed_at_someone: probability, relevant: probability, should_respond: probability }',
+      'If not enough information is available, set all probabilities to 0',
+      '',
+      'Message: {%message%}'
+    ];
+
+    return uniqueAi.createCompletion(prompt, { message: msg.text }).then(response => {
+      uniqueAi.forget(prompt);
+
+      return extractJSON(response.join('\n'));
+    });
+  }
+
+  async completeMessageConditional(msg) {
+    if (!msg.text) { return }
+
+    const uniqueAi = this.createUniqueAiForChat(msg);    
+
+    if (this.alwaysReply || msg.text.includes(`@${this.botInfo.username}`)) {
+      return uniqueAi.createCompletion([msg.text], {});
+    } else {
+      return this.completeResponseProbabilities(msg, uniqueAi).then(rating => {
+        if (rating.directed_at_me >= rating.directed_at_someone && rating.relevant >= 50) {
+          return uniqueAi.createCompletion([msg.text], {});
+        }
+      });
+    }
+  }
+
   handleMessage(msg) {
+    switch (msg.chat.type) {
+      case 'supergroup':
+      case 'group':
 
-    if (msg.chat.type === 'group' || msg.chat.type === 'supergroup') {
-      if (this.whiteListedGroups.has(msg.chat.title)) {
-        const command = this.parseCommand(msg.text);
+        if (this.whiteListedGroups.has(msg.chat.title)) {
+          const command = this.parseCommand(msg.text);
 
-        if (command) {
-          const { commandName, params } = command;
-          this.executeCommand(msg, commandName, params);
-        } else {
-
-          const aiId = msg.message_thread_id ? msg.message_thread_id : msg.chat.id;
-
-          this.ai = this.ai ? this.ai : {};
-          this.ai[msg.chat.id] = this.ai[msg.chat.id] ? this.ai[msg.chat.id] : {};
-          this.ai[msg.chat.id][aiId] = this.ai[msg.chat.id][aiId] ? this.ai[msg.chat.id][aiId] : new AIInterface();
-
-          let topic = "General Discussion";
-          if (msg.reply_to_message && msg.reply_to_message.forum_topic_created) {
-            topic = msg.reply_to_message.forum_topic_created.name;
-          }
-
-          const ai = this.ai[msg.chat.id][aiId];
-
-          ai.assignRole([
-            'Your name is vxAssistBot. You act as as 24 year old female assistant chatting on telegram.',
-            `You provide professional and concise advice to your audience. You are an expert on ${topic}`
-          ], {});
-
-          if (msg.text) {
-            if (!msg.text.includes(`@${this.botInfo.username}`)) {
-              const promt = [
-                'Rate a group chat messages probability in percent (0-100) and for each of the following statements:',
-                '1. The message is directed to you',
-                '2. The message is directed to someboy else',
-                '3. The message is relevant',
-                '4. You should respond to this message',
-                '',
-                'Reply with only a JSON object using the format: { directed_at_me: probability, directed_at_someone: probability, relevant: probability, should_respond: probability }',
-                'If not enough information is available, set all probabilities to 0',
-                '',
-                'Message: {%message%}'
-              ];
-
-              ai.createCompletion(promt, { message: msg.text }).then(response => {
-                ai.forget(promt);
-                console.log(response);
-
-                const rating = extractJSON(response.join('\n'));
-                if (rating) {
-                  if (rating.directed_at_me >= rating.directed_at_someone && rating.relevant >= 50) {
-                    ai.createCompletion([msg.text], {}).then(response => {
-                      this.bot.sendMessage(msg.chat.id, response.join('\n'), { message_thread_id: msg.message_thread_id });
-                    }).catch(error => {
-                      this.bot.sendMessage(msg.chat.id, error.message, { message_thread_id: msg.message_thread_id });
-                    });
-                  }
-                }
-              });
-            } else {
-              ai.createCompletion([msg.text], {}).then(response => {
+          if (command) {
+            const { commandName, params } = command;
+            this.executeCommand(msg, commandName, params).catch(error => {
+              this.bot.sendMessage(msg.chat.id, error.message, { message_thread_id: msg.message_thread_id });
+            });
+          } else {
+            this.completeMessageConditional(msg).then(response => {
+              if (response) {
                 this.bot.sendMessage(msg.chat.id, response.join('\n'), { message_thread_id: msg.message_thread_id });
-              }).catch(error => {
-                this.bot.sendMessage(msg.chat.id, error.message, { message_thread_id: msg.message_thread_id });
-              });
-            }
+              }
+            }).catch(error => {
+              this.bot.sendMessage(msg.chat.id, error.message, { message_thread_id: msg.message_thread_id });
+            });
+          }
+        } else {
+          this.bot.sendMessage(msg.chat.id, 'Not allowed', { message_thread_id: msg.message_thread_id });
+          this.bot.leaveChat(msg.chat.id).catch(error => {
+            // I don't care 
+          });
+        }
+
+        break;
+
+      case 'private':
+        if (this.isAdminUser(msg.from.username)) {
+          const command = this.parseCommand(msg.text);
+          if (command) {
+            const { commandName, params } = command;
+            this.executeCommand(msg, commandName, params).catch(error => {
+              this.bot.sendMessage(msg.chat.id, error.message, { message_thread_id: msg.message_thread_id });
+            });
           }
         }
-      } else {
-        this.bot.sendMessage(msg.chat.id, 'Not allowed');
-        this.bot.leaveChat(msg.chat.id).catch(error => {
-          // I don't care 
-        });
-      }
-    } else if (this.isAdminUser(msg.from.username)) {
-      const command = this.parseCommand(msg.text);
-      if (command) {
-        const { commandName, params } = command;
-        this.executeCommand(msg, commandName, params);
-      }
+
+      default:
+        console.log(msg);
+        break;
     }
+  }
+  
+  handleGenerateImage(msg, params) {
+    const ai = this.createUniqueAiForChat(msg);
+
+    this.bot.sendMessage(msg.chat.id, `ok, give it a minute...`, { message_thread_id: msg.message_thread_id });
+
+    return ai.createImage(params.join(' '), { Text2ImageAPI: 'huggingFace', Text2ImageModel: 'dreamlike-art/dreamlike-anime-1.0' }).then((image) => {
+      return this.bot.sendPhoto(msg.chat.id, image, { message_thread_id: msg.message_thread_id });
+    }).catch(error => {
+      if (error.response) {
+        this.bot.sendMessage(msg.chat.id, error.response.status, { message_thread_id: msg.message_thread_id });
+        this.bot.sendMessage(msg.chat.id, error.response.data, { message_thread_id: msg.message_thread_id });
+      } else {
+        this.bot.sendMessage(msg.chat.id, error.message, { message_thread_id: msg.message_thread_id });
+      }
+    });
   }
 
   handleHelp(msg, params) {
@@ -197,7 +249,7 @@ class vxAssistBotBot {
     for (const command of Object.keys(this.commandCallbacks)) {
       reply += `/${command}\n`;
     }
-    this.bot.sendMessage(msg.chat.id, reply);
+    this.bot.sendMessage(msg.chat.id, reply, { message_thread_id: msg.message_thread_id });
   }
 
   handleAddAdmin(msg, params) {
