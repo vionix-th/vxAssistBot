@@ -1,10 +1,16 @@
+const { spawn } = require('child_process');
 const TelegramBot = require('node-telegram-bot-api');
 const { AIInterface } = require('./AIInterface.js');
-const { extractJSON } = require('./vxAssistCommon.js');
+const { extractJSON, sanitizeString } = require('./vxAssistCommon.js');
 const fs = require('fs');
+const path = require('path');
+const fileType = require('file-type');
 
 class vxAssistBotBot {
   constructor() {
+    this.ai = {};
+    this.aiParams = {};
+    this.aiContext = {};    
     this.bot = null;
     this.storageFile = 'botStorage.json';
     this.botToken = '';
@@ -62,6 +68,16 @@ class vxAssistBotBot {
         callback: this.handleGenerateImage.bind(this),
         description: 'Create an image using generative AI',
       },
+      genvid: {
+        adminOnly: false,
+        callback: this.handleGenerateVideo.bind(this),
+        description: 'Create a video using generative AI',
+      },
+      exec: {
+        adminOnly: true, /* KEEP THIS ADMIN ONLY */
+        callback: this.handleExecuteCommand.bind(this),
+        description: 'Execute a command',
+      },
     };
   }
 
@@ -84,7 +100,7 @@ class vxAssistBotBot {
 
       this.bot.setMyCommands(Object.keys(this.commandCallbacks).map(i => {
         return { command: i, description: this.commandCallbacks[i].description };
-      }), { scope: TelegramBot.BotCommandScopeAllGroupChats });
+      }), { scope: TelegramBot.BotCommandScopeChat });
 
       console.log('Bot is running...');
     });
@@ -97,7 +113,7 @@ class vxAssistBotBot {
       this.botToken = storage.botToken;
       this.whiteListedGroups = new Set(storage.whiteListedGroups);
       this.adminUsers = storage.adminUsers;
-      this.aiParams = storage.aiParams;
+      this.aiParams = storage.aiParams;      
     }
   }
 
@@ -106,6 +122,9 @@ class vxAssistBotBot {
       Object.keys(this.ai[i]).forEach(j => {
         if (!this.aiParams[i]) { this.aiParams[i] = {}; }
         this.aiParams[i][j] = this.ai[i][j].config;
+
+        if (!this.aiContext[i]) { this.aiContext[i] = {}; }
+        this.aiContext[i][j] = [ ...this.ai[i][j].uniqueAi.messages ];
       })
     });
 
@@ -114,6 +133,7 @@ class vxAssistBotBot {
       whiteListedGroups: Array.from(this.whiteListedGroups),
       adminUsers: this.adminUsers,
       aiParams: this.aiParams,
+      aiContext: this.aiContext
     };
     fs.writeFileSync(this.storageFile, JSON.stringify(storage, null, 2), 'utf8');
   }
@@ -161,19 +181,15 @@ class vxAssistBotBot {
           aiEnabled: 'YES',
           alwaysReply: "YES",
           Text2ImageAPI: "huggingFace",
-          Text2ImageModel: "dreamlike-art/dreamlike-anime-1.0",
-          Text2SpeechAPI: 'localSystem',
-          // Text2SpeechAPI: 'huggingFace',
-          Text2SpeechModel: 'Ava',
-          // Text2SpeechModel: 'espnet/kan-bayashi_ljspeech_vits',
-          VisualStyle: null,
-          VisualStyleCharacters: null,
-          VisualStyleNegative: null,
+          Text2ImageModel: "dreamlike-art/dreamlike-anime-1.0"
         }
       };
 
     if (this.aiParams[msg.chat.id] && this.aiParams[msg.chat.id][aiId]) {
-      this.ai[msg.chat.id][aiId].config = this.aiParams[msg.chat.id][aiId];
+      this.ai[msg.chat.id][aiId].config = this.aiParams[msg.chat.id][aiId];    
+    }
+    if (this.aiContext[msg.chat.id] && this.aiContext[msg.chat.id][aiId]) {
+      this.ai[msg.chat.id][aiId].uniqueAi.messages = [ ...this.aiContext[msg.chat.id][aiId] ];
     }
 
     return this.ai[msg.chat.id][aiId];
@@ -189,7 +205,6 @@ class vxAssistBotBot {
     uniqueAi.assignRole([
       `Your name is ${this.botInfo.first_name} ${this.botInfo.last_name}, Nickname ${this.botInfo.username}.`,
       'You provide professional and concise advice to your audience and express yourself in an academic and formal manner.',
-      'You ALWAYS use HTML to format your messages.',
       `You are an expert on ${topic} and related topics.`
     ], {});
 
@@ -221,7 +236,7 @@ class vxAssistBotBot {
     const { uniqueAi, config } = this.createUniqueAiForChat(msg);
 
     if (!msg.text) { return }
-    if (config.aiEnabled !== "YES") { return }  
+    if (config.aiEnabled !== "YES") { return }    
 
     if (config.alwaysReply === "YES" || msg.text.includes(`@${this.botInfo.username}`)) {
       return uniqueAi.createCompletion([msg.text], {});
@@ -253,13 +268,14 @@ class vxAssistBotBot {
             }, 5000);
 
             this.completeMessageConditional(msg).then(response => {              
-              if (response) {
-                this.bot.sendMessage(msg.chat.id, response.join('\n'), { message_thread_id: msg.message_thread_id, parse_mode: 'HTML', reply_to_message_id: msg.id });
-              }              
+              if (response) {                
+                this.bot.sendMessage(msg.chat.id, response.join('\n'), { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.id });
+              }
             }).catch(error => {
               this.bot.sendMessage(msg.chat.id, error.message, { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.id });
             }).finally(() => {
               clearInterval(keepActionAliveTimer);
+              this.saveStorage();
             });
           }
         } else {
@@ -285,7 +301,82 @@ class vxAssistBotBot {
       default:
         console.log(msg);
         break;
+    }    
+  }
+
+  handleGenerateVideo(msg, params) {
+    try {
+      const args = params.join(' ');
+      var basename = path.basename(sanitizeString(args)).substring(0, 32);
+      var filePath = './build/' + basename + `.txt`;
+      var videoPath = './build/' + basename + `.Portrait.mp4`;
+
+      const p = spawn('zsh', ['./plotAgentRuth', filePath, args]);
+
+      var state = 'record_video';
+      const keepActionAliveTimer = setInterval(() => {
+        this.bot.sendChatAction(msg.chat.id, state, { message_thread_id: msg.message_thread_id });
+      }, 5000);
+
+      p.stderr.on('data', data => { console.log(data.toString()); });
+      p.stdout.on('data', data => { console.log(data.toString()); });
+
+      p.on('exit', code => {      
+        if (fs.existsSync(videoPath)) {
+          state = 'upload_video';
+          this.bot.sendVideo(msg.chat.id, videoPath,
+            { message_thread_id: msg.message_thread_id, caption: `Here is the video for: ${params.join(' ')}` },
+            { filename: basename }).finally(() => {
+              clearInterval(keepActionAliveTimer);
+            });
+        } else {
+          this.bot.sendMessage(msg.chat.id, `Failed to create video for: ${args}`, { message_thread_id: msg.message_thread_id }).finally(() => {
+            clearInterval(keepActionAliveTimer);
+          });
+        }
+      });
+    } catch (error) {
+      console.log(error.message);
     }
+  }
+
+  handleExecuteCommand(msg, params) {
+    const p = spawn(params[0], params.slice(1));
+
+    var bStdout = '';
+    var bStderr = '';
+
+    p.stderr.on('data', data => { bStderr += data; });
+    p.stdout.on('data', data => { bStdout += data; });
+
+    p.on('exit', code => {
+      const promises = [];
+
+      if (bStdout.length > 0) {
+        var buff = Buffer.from(bStdout)
+        var type = fileType(buff);
+        type = type ? type : { ext: 'txt', mime: 'text/plain' };
+
+        promises.push(
+          this.bot.sendDocument(msg.chat.id, buff,
+            { message_thread_id: msg.message_thread_id, caption: `Here is the output for command: ${params.join(' ')}` },
+            { filename: `stdout.${type.ext}`, contentType: `${type.mime}` }
+          )
+        );
+      }
+
+      if (bStderr.length > 0) {
+        var buff = Buffer.from(bStderr)
+        var type = fileType(buff);
+        type = type ? type : { ext: 'txt', mime: 'text/plain' };
+
+        promises.push(
+          this.bot.sendDocument(msg.chat.id, buff,
+            { message_thread_id: msg.message_thread_id, caption: `here is the output for command: ${params.join(' ')}` },
+            { filename: `stderr.${type.ext}`, contentType: `${type.mime}` })
+        );
+      }
+    });
   }
 
   handleResetRole(msg, params) {
@@ -308,7 +399,7 @@ class vxAssistBotBot {
 
     if (config.hasOwnProperty(params[0])) {
       config[params[0]] = params.splice(1).join(' ');
-      this.saveStorage();
+      this.saveStorage();    
       this.bot.sendMessage(msg.chat.id, `${params[0]} was set to ${config[params[0]]}`, { message_thread_id: msg.message_thread_id });
     } else {
       this.bot.sendMessage(msg.chat.id, `${params[0]} is not a valid option`, { message_thread_id: msg.message_thread_id });
@@ -333,7 +424,7 @@ class vxAssistBotBot {
       this.bot.sendChatAction(msg.chat.id, 'record_video', { message_thread_id: msg.message_thread_id });
     }, 5000);
 
-    return uniqueAi.createImage(params.join(' '), { Text2ImageAPI: config.Text2ImageAPI, Text2ImageModel: config.Text2ImageModel }).then((image) => {    
+    return uniqueAi.createImage(params.join(' '), { Text2ImageAPI: config.Text2ImageAPI, Text2ImageModel: config.Text2ImageModel }).then((image) => {
       return this.bot.sendPhoto(msg.chat.id, image, { message_thread_id: msg.message_thread_id });
     }).catch(error => {
       if (error.response) {
