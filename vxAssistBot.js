@@ -104,7 +104,7 @@ class vxAssistBotBot {
   saveStorage() {
     Object.keys(this.ai).forEach(i => {
       Object.keys(this.ai[i]).forEach(j => {
-        if(!this.aiParams[i]) { this.aiParams[i] = {}; }
+        if (!this.aiParams[i]) { this.aiParams[i] = {}; }
         this.aiParams[i][j] = this.ai[i][j].config;
       })
     });
@@ -172,7 +172,7 @@ class vxAssistBotBot {
         }
       };
 
-    if(this.aiParams[msg.chat.id] && this.aiParams[msg.chat.id][aiId]) {
+    if (this.aiParams[msg.chat.id] && this.aiParams[msg.chat.id][aiId]) {
       this.ai[msg.chat.id][aiId].config = this.aiParams[msg.chat.id][aiId];
     }
 
@@ -189,6 +189,7 @@ class vxAssistBotBot {
     uniqueAi.assignRole([
       `Your name is ${this.botInfo.first_name} ${this.botInfo.last_name}, Nickname ${this.botInfo.username}.`,
       'You provide professional and concise advice to your audience and express yourself in an academic and formal manner.',
+      'You ALWAYS use HTML to format your messages.',
       `You are an expert on ${topic} and related topics.`
     ], {});
 
@@ -220,7 +221,7 @@ class vxAssistBotBot {
     const { uniqueAi, config } = this.createUniqueAiForChat(msg);
 
     if (!msg.text) { return }
-    if (config.aiEnabled !== "YES") { return }
+    if (config.aiEnabled !== "YES") { return }  
 
     if (config.alwaysReply === "YES" || msg.text.includes(`@${this.botInfo.username}`)) {
       return uniqueAi.createCompletion([msg.text], {});
@@ -247,16 +248,22 @@ class vxAssistBotBot {
               this.bot.sendMessage(msg.chat.id, error.message, { message_thread_id: msg.message_thread_id });
             });
           } else {
-            this.completeMessageConditional(msg).then(response => {
+            const keepActionAliveTimer = setInterval(() => {
+              this.bot.sendChatAction(msg.chat.id, 'typing', { message_thread_id: msg.message_thread_id });
+            }, 5000);
+
+            this.completeMessageConditional(msg).then(response => {              
               if (response) {
-                this.bot.sendMessage(msg.chat.id, response.join('\n'), { message_thread_id: msg.message_thread_id });
-              }
+                this.bot.sendMessage(msg.chat.id, response.join('\n'), { message_thread_id: msg.message_thread_id, parse_mode: 'HTML', reply_to_message_id: msg.id });
+              }              
             }).catch(error => {
-              this.bot.sendMessage(msg.chat.id, error.message, { message_thread_id: msg.message_thread_id });
+              this.bot.sendMessage(msg.chat.id, error.message, { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.id });
+            }).finally(() => {
+              clearInterval(keepActionAliveTimer);
             });
           }
         } else {
-          this.bot.sendMessage(msg.chat.id, 'Not allowed', { message_thread_id: msg.message_thread_id });
+          this.bot.sendMessage(msg.chat.id, 'Not allowed', { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.id });
           this.bot.leaveChat(msg.chat.id).catch(error => {
             // I don't care 
           });
@@ -283,6 +290,7 @@ class vxAssistBotBot {
 
   handleResetRole(msg, params) {
     const { uniqueAi, config } = this.createUniqueAiForChat(msg);
+
     this.initializeUniqueAiRoleForChat(msg, uniqueAi);
     this.bot.sendMessage(msg.chat.id, 'AI persona reset to default', { message_thread_id: msg.message_thread_id });
   }
@@ -291,6 +299,7 @@ class vxAssistBotBot {
     const { uniqueAi, config } = this.createUniqueAiForChat(msg);
 
     uniqueAi.assignRole([params.join('\n')], {});
+
     this.bot.sendMessage(msg.chat.id, 'Assign a new persona to the AI', { message_thread_id: msg.message_thread_id });
   }
 
@@ -309,18 +318,22 @@ class vxAssistBotBot {
   handleGetParameter(msg, params) {
     const { uniqueAi, config } = this.createUniqueAiForChat(msg);
     const reply = [];
+
     Object.keys(config).forEach(key => {
       reply.push(`${key}: ${config[key]}`);
     })
+
     this.bot.sendMessage(msg.chat.id, reply.join('\n'), { message_thread_id: msg.message_thread_id });
   }
 
   handleGenerateImage(msg, params) {
     const { uniqueAi, config } = this.createUniqueAiForChat(msg);
 
-    this.bot.sendMessage(msg.chat.id, `ok, give it a minute...`, { message_thread_id: msg.message_thread_id });
+    const keepActionAliveTimer = setInterval(() => {
+      this.bot.sendChatAction(msg.chat.id, 'record_video', { message_thread_id: msg.message_thread_id });
+    }, 5000);
 
-    return uniqueAi.createImage(params.join(' '), { Text2ImageAPI: config.Text2ImageAPI, Text2ImageModel: config.Text2ImageModel }).then((image) => {
+    return uniqueAi.createImage(params.join(' '), { Text2ImageAPI: config.Text2ImageAPI, Text2ImageModel: config.Text2ImageModel }).then((image) => {    
       return this.bot.sendPhoto(msg.chat.id, image, { message_thread_id: msg.message_thread_id });
     }).catch(error => {
       if (error.response) {
@@ -329,6 +342,8 @@ class vxAssistBotBot {
       } else {
         this.bot.sendMessage(msg.chat.id, error.message, { message_thread_id: msg.message_thread_id });
       }
+    }).finally(() => {
+      clearInterval(keepActionAliveTimer);
     });
   }
 
