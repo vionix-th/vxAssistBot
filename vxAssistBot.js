@@ -129,7 +129,7 @@ class vxAssistBotBot {
     this.ai[msg.chat.id][aiId] = this.ai[msg.chat.id][aiId]
       ? this.ai[msg.chat.id][aiId]
       : {
-        uniqueAi: this.initializeUniqueAiRoleForChat(msg, new AIInterface()), 
+        uniqueAi: this.initializeUniqueAiRoleForChat(msg, new AIInterface()),
         config: {
           aiEnabled: 'YES',
           alwaysReply: "YES",
@@ -140,7 +140,7 @@ class vxAssistBotBot {
       };
 
     if (this.aiParams[msg.chat.id] && this.aiParams[msg.chat.id][aiId]) {
-      this.ai[msg.chat.id][aiId].config = {...this.ai[msg.chat.id][aiId].config, ...this.aiParams[msg.chat.id][aiId]};
+      this.ai[msg.chat.id][aiId].config = { ...this.ai[msg.chat.id][aiId].config, ...this.aiParams[msg.chat.id][aiId] };
     }
     if (this.aiContext[msg.chat.id] && this.aiContext[msg.chat.id][aiId]) {
       this.ai[msg.chat.id][aiId].uniqueAi.messages = [...this.aiContext[msg.chat.id][aiId]];
@@ -259,46 +259,42 @@ class vxAssistBotBot {
   }
 
   handleGenerateVideo(msg, params) {
-    try {
-      const {uniqueAi, config } = this.createUniqueAiForChat(msg);
-      const args = params.join(' ');
+    const { uniqueAi, config } = this.createUniqueAiForChat(msg);
+    const args = params.join(' ');
 
-      if (args.length === 0) {
-        this.bot.sendMessage(msg.chat.id, 'You must provide a title for the story. e.g. /genvid Ruth fighting for freedom', { message_thread_id: msg.message_thread_id });
-        return;
-      }
+    if (args.length === 0) {
+      this.bot.sendMessage(msg.chat.id, 'You must provide a title for the story. e.g. /genvid Ruth fighting for freedom', { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id });
+      return;
+    }
 
-      var basename = path.basename(sanitizeString(args)).substring(0, 32);
-      var filePath = './build/' + basename + `.txt`;
-      var videoPath = './build/' + basename + `.Portrait.mp4`;
+    var basename = path.basename(sanitizeString(args)).substring(0, 32);
+    var filePath = './build/' + basename + `.txt`;
+    var videoPath = './build/' + basename + `.Portrait.mp4`;
 
-      const p = spawn('zsh', [config.VideoScript, filePath, args]);
+    const p = spawn('zsh', [config.VideoScript, filePath, args]);
 
-      var state = 'record_video';
-      const keepActionAliveTimer = setInterval(() => {
-        this.bot.sendChatAction(msg.chat.id, state, { message_thread_id: msg.message_thread_id });
-      }, 5000);
+    var state = 'record_video';
+    const keepActionAliveTimer = setInterval(() => {
+      this.bot.sendChatAction(msg.chat.id, state, { message_thread_id: msg.message_thread_id });
+    }, 5000);
 
-      p.stderr.on('data', data => { console.log(data.toString()); });
-      p.stdout.on('data', data => { console.log(data.toString()); });
+    p.stderr.on('data', data => { console.log(data.toString()); });
+    p.stdout.on('data', data => { console.log(data.toString()); });
 
-      p.on('exit', code => {
-        if (fs.existsSync(videoPath)) {
-          state = 'upload_video';
-          this.bot.sendVideo(msg.chat.id, videoPath,
-            { message_thread_id: msg.message_thread_id, caption: `Here is the video for: ${params.join(' ')}` },
-            { filename: basename }).finally(() => {
-              clearInterval(keepActionAliveTimer);
-            });
-        } else {
-          this.bot.sendMessage(msg.chat.id, `Failed to create video for: ${args}`, { message_thread_id: msg.message_thread_id }).finally(() => {
+    p.on('exit', code => {
+      if (fs.existsSync(videoPath)) {
+        state = 'upload_video';
+        this.bot.sendVideo(msg.chat.id, videoPath,
+          { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id, caption: `Here is the video for: ${params.join(' ')}` },
+          { filename: basename }).finally(() => {
             clearInterval(keepActionAliveTimer);
           });
-        }
-      });
-    } catch (error) {
-      console.log(error.message);
-    }
+      } else {
+        this.bot.sendMessage(msg.chat.id, `Failed to create video for: ${args}`, { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id }).finally(() => {
+          clearInterval(keepActionAliveTimer);
+        });
+      }
+    });
   }
 
   handleExecuteCommand(msg, params) {
@@ -320,7 +316,7 @@ class vxAssistBotBot {
 
         promises.push(
           this.bot.sendDocument(msg.chat.id, buff,
-            { message_thread_id: msg.message_thread_id, caption: `Here is the output for command: ${params.join(' ')}` },
+            { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id, caption: `Here is the output for command: ${params.join(' ')}` },
             { filename: `stdout.${type.ext}`, contentType: `${type.mime}` }
           )
         );
@@ -333,11 +329,13 @@ class vxAssistBotBot {
 
         promises.push(
           this.bot.sendDocument(msg.chat.id, buff,
-            { message_thread_id: msg.message_thread_id, caption: `here is the output for command: ${params.join(' ')}` },
+            { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id, caption: `Here is the output for command: ${params.join(' ')}` },
             { filename: `stderr.${type.ext}`, contentType: `${type.mime}` })
         );
       }
     });
+
+    return Promise.all(promises);
   }
 
   handleResetRole(msg, params) {
@@ -381,19 +379,19 @@ class vxAssistBotBot {
   handleGenerateImage(msg, params) {
     const { uniqueAi, config } = this.createUniqueAiForChat(msg);
 
+    if (params.join(' ').length === 0) {
+      this.bot.sendMessage(msg.chat.id, 'You must provide a title for the story. e.g. /getimg Ruth fighting for freedom', { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id });
+      return;
+    }
+
     const keepActionAliveTimer = setInterval(() => {
       this.bot.sendChatAction(msg.chat.id, 'record_video', { message_thread_id: msg.message_thread_id });
     }, 5000);
 
     return uniqueAi.createImage(params.join(' '), { Text2ImageAPI: config.Text2ImageAPI, Text2ImageModel: config.Text2ImageModel }).then((image) => {
-      return this.bot.sendPhoto(msg.chat.id, image, { message_thread_id: msg.message_thread_id });
+      return this.bot.sendPhoto(msg.chat.id, image, { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id, caption: `Here is the image for: ${params.join(' ')}` });
     }).catch(error => {
-      if (error.response) {
-        this.bot.sendMessage(msg.chat.id, error.response.status, { message_thread_id: msg.message_thread_id });
-        this.bot.sendMessage(msg.chat.id, error.response.data, { message_thread_id: msg.message_thread_id });
-      } else {
-        this.bot.sendMessage(msg.chat.id, error.message, { message_thread_id: msg.message_thread_id });
-      }
+      this.bot.sendMessage(msg.chat.id, error.message, { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id });
     }).finally(() => {
       clearInterval(keepActionAliveTimer);
     });
