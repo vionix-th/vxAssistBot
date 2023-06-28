@@ -17,6 +17,7 @@ class vxAssistBotBot {
     this.alwaysReply = 1;
     this.whiteListedGroups = new Set();
     this.adminUsers = [];
+    this.assistantIgnoreReply = {};
     this.commandCallbacks = {
       addadmin: { adminOnly: true, callback: this.handleAddAdmin.bind(this), description: 'Grant admin privileges to a user' },
       removeadmin: { adminOnly: true, callback: this.handleRemoveAdmin.bind(this), description: 'Revoke admin privileges for a user' },
@@ -191,6 +192,18 @@ class vxAssistBotBot {
 
     if (!msg.text) { return }
     if (config.aiEnabled !== "YES") { return }
+    if (
+      msg.reply_to_message
+      && this.assistantIgnoreReply[msg.chat.id]
+      && this.assistantIgnoreReply[msg.chat.id][msg.reply_to_message.message_id]
+      && (
+        this.assistantIgnoreReply[msg.chat.id][msg.reply_to_message.message_id] === msg.reply_to_message.message_id
+        || (
+          msg.reply_to_message.message_thread_id
+          && this.assistantIgnoreReply[msg.chat.id][msg.reply_to_message.message_id] === msg.reply_to_message.message_thread_id
+        )
+      )
+    ) { return }
 
     if (config.alwaysReply === "YES" || msg.text.includes(`@${this.botInfo.username}`)) {
       return uniqueAi.createCompletion([msg.text], {});
@@ -223,17 +236,17 @@ class vxAssistBotBot {
 
             this.completeMessageConditional(msg).then(response => {
               if (response) {
-                this.bot.sendMessage(msg.chat.id, response.join('\n'), { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.id });
+                this.bot.sendMessage(msg.chat.id, response.join('\n'), { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id });
               }
             }).catch(error => {
-              this.bot.sendMessage(msg.chat.id, error.message, { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.id });
+              this.bot.sendMessage(msg.chat.id, error.message, { message_thread_id: msg.message_thread_id, reply_to_message_id: message_id });
             }).finally(() => {
               clearInterval(keepActionAliveTimer);
               this.saveStorage();
             });
           }
         } else {
-          this.bot.sendMessage(msg.chat.id, 'Not allowed', { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.id });
+          this.bot.sendMessage(msg.chat.id, 'Not allowed', { message_thread_id: msg.message_thread_id });
           this.bot.leaveChat(msg.chat.id).catch(error => {
             // I don't care 
           });
@@ -298,6 +311,12 @@ class vxAssistBotBot {
   }
 
   handleExecuteCommand(msg, params) {
+    
+    if (args.length === 0) {
+      this.bot.sendMessage(msg.chat.id, 'Missing argument. e.g. /exec ls -lah', { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id });
+      return;
+    }
+
     const p = spawn(params[0], params.slice(1));
 
     var bStdout = '';
@@ -380,8 +399,20 @@ class vxAssistBotBot {
     const { uniqueAi, config } = this.createUniqueAiForChat(msg);
 
     if (params.join(' ').length === 0) {
-      this.bot.sendMessage(msg.chat.id, 'You must provide a title for the story. e.g. /getimg Ruth fighting for freedom', { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id });
-      return;
+      return this.bot.sendMessage(msg.chat.id, 'You must provide a title for the story. e.g. /getimg Hello World. Use the reply function to provide a title or issue a new /getimg command',
+        { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id, reply_markup: JSON.stringify({ force_reply: true, selective: true }) }).then((nextMsg) => {
+          if (!this.assistantIgnoreReply[nextMsg.chat.id]) { this.assistantIgnoreReply[nextMsg.chat.id] = {} }
+          this.assistantIgnoreReply[nextMsg.chat.id][nextMsg.message_id] = nextMsg.message_thread_id ? nextMsg.message_thread_id : nextMsg.message_id;
+          const replyId = this.bot.onReplyToMessage(nextMsg.chat.id, nextMsg.message_id, replyMsg => {
+            this.bot.removeReplyListener(replyId);
+            delete this.assistantIgnoreReply[msg.chat.id][msg.message_id];
+            return this.handleGenerateImage(msg, [replyMsg.text]);
+          });
+          setTimeout(() => {
+            this.bot.removeReplyListener(replyId);
+            delete this.assistantIgnoreReply[msg.chat.id][msg.message_id];
+          }, 180000);
+        });
     }
 
     const keepActionAliveTimer = setInterval(() => {
