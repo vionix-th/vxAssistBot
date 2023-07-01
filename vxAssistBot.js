@@ -25,7 +25,6 @@ class vxAssistBotBot extends Ent42TelegramBot {
 
     this.registerGroupCommand('start', this.handleStart.bind(this), 'Start the bot (does nothing really)');
     this.registerGroupCommand('intro', this.handleIntroduce.bind(this), 'Introduce the current AI role');
-    this.registerGroupCommand('help', this.handleHelp.bind(this), 'List the available commands');
     this.registerGroupCommand('genimg', this.handleGenerateImage.bind(this), 'Create an image using generative AI');
     this.registerGroupCommand('genvid', this.handleGenerateVideo.bind(this), 'Create a video using generative AI');
   }
@@ -82,59 +81,54 @@ class vxAssistBotBot extends Ent42TelegramBot {
   }
 
   handleMessage(msg) {
-    try {
+
+    const handleCommandOrComplete = async (msg) => {
+      const command = this.parseCommand(msg.text);
+
+      if (command) {
+        const { commandName, params } = command;
+        return this.executeCommand(msg, commandName, params);
+      }
+
+      return this.completeMessageConditional(msg).then(response => {
+        if (response) {
+          return this.send(msg, response.join('\n'));
+        }
+      });
+    }
+
+    try {     
+      var keepActionAliveTimer = setInterval(() => {
+        this.bot.sendChatAction(msg.chat.id, 'typing', { message_thread_id: msg.message_thread_id });
+      }, 3000);
+
+      let allowed = false;
+
       switch (msg.chat.type) {
         case 'supergroup':
         case 'group':
-
-          if (this.whiteListedGroups.has(msg.chat.title)) {
-            const command = this.parseCommand(msg.text);
-
-            if (command) {
-              const { commandName, params } = command;
-              return this.executeCommand(msg, commandName, params).catch(error => {
-                return this.send(msg, error.message);
-              });
-            } else {
-              const keepActionAliveTimer = setInterval(() => {
-                this.bot.sendChatAction(msg.chat.id, 'typing', { message_thread_id: msg.message_thread_id });
-              }, 5000);
-
-              return this.completeMessageConditional(msg).then(response => {
-                if (response) {
-                  return this.send(msg, response.join('\n'));
-                }
-              }).catch(error => {
-                return this.send(msg, error.message);
-              }).finally(() => {
-                clearInterval(keepActionAliveTimer);
-                this.saveStorage();
-              });
-            }
-          } else {
-            this.send(msg, 'Forbidden');
-            this.bot.leaveChat(msg.chat.id).catch(error => {
-              // I don't care 
-            });
-          }
-
+          allowed = this.whiteListedGroups.has(msg.chat.title);
           break;
 
         case 'private':
-          if (this.isAdminUser(msg.from.username)) {
-            const command = this.parseCommand(msg.text);
-            if (command) {
-              const { commandName, params } = command;
-              this.executeCommand(msg, commandName, params).catch(error => {
-                this.send(msg, error.message);
-              });
-            }
-          }
+          allowed = this.isAdminUser(msg.from.username);
+          break;
 
         default:
-          console.log(msg);
-          break;
+          console.log(msg);        
       }
+
+      if (!allowed) {
+        this.bot.leaveChat(msg.chat.id).catch(error => { /* IGNORE */ });
+        throw new Error("ACCESS DENIED");
+      }
+
+      return handleCommandOrComplete(msg).catch(error => {
+        this.send(msg, error.message);
+      }).finally(() => {
+        clearInterval(keepActionAliveTimer);
+        this.saveStorage();
+      });
     } catch (error) {
       console.log(error.message);
     }
@@ -309,19 +303,10 @@ class vxAssistBotBot extends Ent42TelegramBot {
     return this.bot.sendMessage(msg.chat.id, 'By the Power of Grayskull ⚔️💪');
   }
 
-  handleHelp(msg, params) {
-    let reply = 'Available commands:\n\n';
-    for (const command of Object.keys(this.commandCallbacks)) {
-      reply += `/${command}\n`;
-    }
-
-    return this.send(reply, 'Assign a new persona to the AI');
-  }
-
   handleIntroduce(msg, params) {
     return this.bot.sendMessage(msg.chat.id, `By the Power of Grayskull ⚔️ @${this.botInfo.username} 💪`)
       .then(msg => {
-        const {uniqueAi, config} = this.uniqueAiForChat(msg);
+        const { uniqueAi, config } = this.uniqueAiForChat(msg);
         return uniqueAi.createCompletion(["Please introduce yourself"], {}).then((completion) => {
           return this.bot.sendMessage(msg.chat.id, completion.join('\n'));
         })
