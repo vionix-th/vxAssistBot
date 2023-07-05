@@ -204,6 +204,7 @@ class vxAssistBotBot extends Ent42TelegramBot {
 
   handleHalt(msg, params) {
     return this.send(msg, 'Halted').finally(() => {
+      this.saveStorage();
       process.exit();
     });
   }
@@ -222,8 +223,9 @@ class vxAssistBotBot extends Ent42TelegramBot {
     p.stderr.on('data', data => { bStderr += data; });
     p.stdout.on('data', data => { bStdout += data; });
 
+    const promises = [];
+    
     p.on('exit', code => {
-      const promises = [];
 
       if (bStdout.length > 0) {
         var buff = Buffer.from(bStdout)
