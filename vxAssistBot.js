@@ -378,11 +378,11 @@ class vxAssistBotBot extends Ent42TelegramBot {
   }
 
   handleIntroduce(msg, params) {
-    return this.bot.sendMessage(msg.chat.id, `By the Power of Grayskull ⚔️ @${this.botInfo.username} 💪`)
+    return this.send(msg.chat.id, `By the Power of Grayskull ⚔️ @${this.botInfo.username} 💪`)
       .then(msg => {
         const { uniqueAi, config } = this.uniqueAiForChat(msg);
         return uniqueAi.createCompletion(["Please introduce yourself"], {}).then((completion) => {
-          return this.bot.sendMessage(msg.chat.id, completion.join('\n'));
+          return this.send(msg.chat.id, completion.join('\n'));
         })
       });
   }
