@@ -242,7 +242,7 @@ class vxAssistBotBot extends Ent42TelegramBot {
         type = type ? type : { ext: 'txt', mime: 'text/plain' };
 
 
-        if(type === 'txt' && inline){
+        if(type.ext === 'txt' && inline){
           promises.push(this.send(buff.toString()));
         }else{
           promises.push(
@@ -259,7 +259,7 @@ class vxAssistBotBot extends Ent42TelegramBot {
         var type = fileType(buff);
         type = type ? type : { ext: 'txt', mime: 'text/plain' };
 
-        if(type === 'txt' && inline){
+        if(type.ext === 'txt' && inline){
           promises.push(this.send(buff.toString()));
         }else{
           promises.push(
