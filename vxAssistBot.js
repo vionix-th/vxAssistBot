@@ -87,28 +87,31 @@ class vxAssistBotBot extends Ent42TelegramBot {
     this.updateCacheFromMessage(msg);
 
     const parseEntities = (content) => {
-      let entities = content.split(/[`]{3}[^ \s]*/);
-      let entitiesInfo = Array.from(content.matchAll(/([`]{3}[^ \s]*)/g), (m) => m[0]);
+      let entities = [];
 
-      while (entitiesInfo.length < entities.length) { entitiesInfo.unshift('```'); }
+      let lPos = 0;
+      let rPos = content.indexOf('```', 0);
 
-      entities = entities.map((entity, index) => {
-        const type = entitiesInfo[index] === '```' ? 'plain' : entitiesInfo[index].substring(3);
+      while (rPos !== -1) { 
+        let entity = content.substring(lPos, rPos);
 
-        return { entity, type };
-      });
-
-      entities = entities.map((i) => {
-        if (i.type === 'plain') {
-          i.entity = this.escapeMarkupV2String(i.entity);
+        if (entity.startsWith('```')) {
+          rPos += 3;
+          entity = content.substring(lPos, rPos);
+          entities.push({ entity, type: entity.substring(3, entity.indexOf('\n')) });
         } else {
-          i.entity = '```' + i.type + i.entity + '```';
+          entities.push({ entity: this.escapeMarkupV2String(entity), type: 'plain' });
         }
+        lPos = rPos;
+        rPos = content.indexOf('```', rPos + 3);
+      }
 
-        return i.entity;
-      });
+      if (lPos < content.length) {
+        let entity = content.substring(lPos);
+        entities.push({ entity: this.escapeMarkupV2String(entity), type: 'plain' })
+      }
 
-      return entities;
+      return entities.map((i) => i.entity);;
     }
 
     const handleCommandOrComplete = async (msg) => {
@@ -219,7 +222,7 @@ class vxAssistBotBot extends Ent42TelegramBot {
 
     var inline = false;
 
-    if (params[0].toLowerCase() == '-inline') {
+    if (params[0].toLowerCase() == '-i') {
       inline = true;
       params.shift();
     }
@@ -242,16 +245,16 @@ class vxAssistBotBot extends Ent42TelegramBot {
         type = type ? type : { ext: 'txt', mime: 'text/plain' };
 
 
-        if(type.ext === 'txt' && inline){
+        if (type.ext === 'txt' && inline) {
           promises.push(this.send(msg, buff.toString()));
-        }else{
+        } else {
           promises.push(
             this.bot.sendDocument(msg.chat.id, buff,
               { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id, caption: `Here is the output for command: ${params.join(' ')}` },
               { filename: `stdout.${type.ext}`, contentType: `${type.mime}` }
             )
           );
-        }      
+        }
       }
 
       if (bStderr.length > 0) {
@@ -259,9 +262,9 @@ class vxAssistBotBot extends Ent42TelegramBot {
         var type = fileType(buff);
         type = type ? type : { ext: 'txt', mime: 'text/plain' };
 
-        if(type.ext === 'txt' && inline){
+        if (type.ext === 'txt' && inline) {
           promises.push(this.send(msg, buff.toString()));
-        }else{
+        } else {
           promises.push(
             this.bot.sendDocument(msg.chat.id, buff,
               { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id, caption: `Here is the output for command: ${params.join(' ')}` },
