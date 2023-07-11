@@ -25,6 +25,7 @@ class AIInterface {
     this.persona = {
       "name": "AIInterface",
       "model": "gpt-3.5-turbo",
+      "maxToken":  4096,
       "temperature": 0.5,
       "role": [],
       "prompt": [[]],
@@ -215,7 +216,7 @@ class AIInterface {
       });
     }
 
-    this.reduceContext(4096);
+    this.reduceContext(parseInt(this.persona.maxToken));
 
     var content = [];
 
