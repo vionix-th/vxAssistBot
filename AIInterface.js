@@ -8,6 +8,17 @@ const { AIHuggingFace } = require("./AIHuggingFace");
 const { AILocalSystem } = require("./AILocalSystem");
 const { readApiKey } = require("./vxAssistCommon");
 
+const debugOut = (msg) => {
+  debugOut.debugOutCallCounter ??= 0;
+  
+  let e = new Error();
+  let frame = e.stack.split("\n")[2]; // change to 3 for grandparent func
+  let lineNumber = frame.split(":").reverse()[1];
+  let functionName = frame.split(" ")[5];
+  
+  console.error(`${debugOut.debugOutCallCounter++} ${new Date().toISOString()} ${lineNumber}.${functionName}(...): ${msg}`);
+}
+
 class AIInterface {
   /**
    * Constructs an instance of the AIInterface.
@@ -40,7 +51,7 @@ class AIInterface {
    */
   async sleep(ms) {
     return new Promise((resolve) => {
-      console.log('Request limit reached. Taking a short break...');
+      debugOut('Request limit reached. Taking a short break...');
       setTimeout(resolve, ms);
     });
   }
@@ -116,12 +127,12 @@ class AIInterface {
     // Assign the persona to the agents  
     this.assignRole(persona.role, parameter);
 
-    console.log(persona.role.join("\n").yellow);
+    debugOut(persona.role.join("\n").yellow);
     for (let i = 0; i < persona.initialPrompt.length; i++) {
       // Complete the initialization prompts for the editor agent
       const prompt = persona.initialPrompt[i];
-      console.log(this.expandArguments(prompt, parameter).join("\n").red);
-      console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>".red);
+      debugOut(this.expandArguments(prompt, parameter).join("\n").red);
+      debugOut(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>".red);
 
       response = await this.createCompletion(prompt, parameter);
       callback && callback({ persona, parameter, response });
@@ -179,17 +190,32 @@ class AIInterface {
     this.messages = this.messages.filter(i => (i.role === "system"));
   }
 
-  reduceContext(maxTokens) {
-    const countTokens = (text) => {
-      const encoded = encode(text);
-      return encoded.length;
-    };
+  tokenizeMemory() {
+    return this.messages.reduce((count, message) => count + countTokens(message.content), 0);
+  }
 
-    let totalTokens = this.messages.reduce((count, message) => count + countTokens(message.content), 0);
+  tokenize(text) {
+    const encoded = encode(text);
+    return encoded.length;
+  };
+
+  reduceContext(maxTokens) {
+    let totalTokens = this.messages.reduce((count, message) => count + this.tokenize(message.content), 0);
+
+    debugOut(`${totalTokens} / ${maxTokens} (${this.persona.maxToken})`);
+
+    let system = this.messages.filter(i => (i.role === "system"));
+    let messages = this.messages.filter(i => (i.role !== "system"));
+
     while (totalTokens > maxTokens) {
-      const removedMessage = this.messages.shift();
-      totalTokens -= countTokens(removedMessage.content);
+      const removedMessage = messages.shift();
+
+      debugOut(`\t> removing: ${removedMessage.role} / ${removedMessage.content.substring(0, 32)}...`);
+
+      totalTokens -= this.tokenize(removedMessage.content);
     }
+
+    this.messages = [...system, ...messages];
   }
 
   /**
@@ -246,10 +272,10 @@ class AIInterface {
         retryCount++;
         if (retryCount >= 3) {
           if (error.response) {
-            console.log(error.response.status);
-            console.log(error.response.data);
+            debugOut(error.response.status);
+            debugOut(error.response.data);
           } else {
-            console.log(error.message);
+            debugOut(error.message);
           }
         }
       }
