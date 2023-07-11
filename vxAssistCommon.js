@@ -93,7 +93,14 @@ function extractJSON(text) {
     return null;
 }
 
+async function sleep(ms) {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+}
+
 module.exports = {
+    sleep,
     extractJSON,
     createDefaultParameters,
     sanitizeString,
