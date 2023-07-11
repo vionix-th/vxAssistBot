@@ -5,6 +5,7 @@ package-lock.json
 
 .vscode/
 node_modules/
+!node_modules/ent42/
 build/
 .DS_Store
 botStorage.json
