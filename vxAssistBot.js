@@ -1,5 +1,5 @@
 const { spawn } = require('child_process');
-const { extractJSON, sanitizeString } = require('./vxAssistCommon.js');
+const { extractJSON, sanitizeString, debugOut } = require('./vxAssistCommon.js');
 const { Ent42TelegramBot } = require('ent42/telegramBot.js');
 const fs = require('fs');
 const path = require('path');
@@ -161,7 +161,7 @@ class vxAssistBotBot extends Ent42TelegramBot {
           break;
 
         default:
-          console.log(msg);
+          debugOut(msg);
       }
 
       if (!allowed) {
@@ -181,7 +181,7 @@ class vxAssistBotBot extends Ent42TelegramBot {
       });
     } catch (error) {
       clearInterval(keepActionAliveTimer);
-      console.log(error.message);
+      debugOut(error.message);
       throw error;
     }
   }

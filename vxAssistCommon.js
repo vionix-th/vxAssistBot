@@ -23,11 +23,6 @@ function saveContentToFile(filename, content) {
     console.log(`Content saved to file: ${filename}`);
 }
 
-/**
- * Reads the API key from a file.
- * @param {string} filePath - The path to the API key file.
- * @returns {string} The API key.
- */
 function readApiKey(filePath) {
     const apiKey = fs.readFileSync(filePath, 'utf-8');
     return apiKey;
@@ -95,11 +90,23 @@ function extractJSON(text) {
 
 async function sleep(ms) {
     return new Promise((resolve) => {
-      setTimeout(resolve, ms);
+        setTimeout(resolve, ms);
     });
 }
 
+function debugOut(msg) {
+    debugOut.debugOutCallCounter ??= 0;
+    
+    let e = new Error();
+    let frame = e.stack.split("\n")[2]; 
+    let lineNumber = frame.split(":").reverse()[1];
+    let functionName = frame.split(" ")[5];
+    
+    console.error(`${debugOut.debugOutCallCounter++} ${new Date().toISOString()} ${lineNumber}.${functionName}(...): ${msg}`);
+  }
+
 module.exports = {
+    debugOut,
     sleep,
     extractJSON,
     createDefaultParameters,
