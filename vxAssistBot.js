@@ -9,43 +9,82 @@ class vxAssistBotBot extends Ent42TelegramBot {
   constructor() {
     super();
 
-    this.commands.addBotAdmin('addadmin', this.handleAddAdmin.bind(this), 'Grant admin privileges to a user');
-    this.commands.addBotAdmin('removeadmin', this.handleRemoveAdmin.bind(this), 'Revoke admin privileges for a user');
-    this.commands.addBotAdmin('addwhitelistedgroup', this.handleAddWhiteListedGroup.bind(this), 'Grant access to a group');
-    this.commands.addBotAdmin('removewhitelistedgroup', this.handleRemoveWhiteListedGroup.bind(this), 'Revoke access from a group');
+    const T = {
+      CMD_ADDADMIN: 'addadmin',
+      DESC_ADDADMIN: 'Grant admin privileges to a user',
+      CMD_REMOVEADMIN: 'removeadmin',
+      DESC_REMOVEADMIN: 'Revoke admin privileges for a user',
+      CMD_ADDWHITELISTEDGROUP: 'addwhitelistedgroup',
+      DESC_ADDWHITELISTEDGROUP: 'Grant access to a group',
+      CMD_REMOVEWHITELISTEDGROUP: 'removewhitelistedgroup',
+      DESC_REMOVEWHITELISTEDGROUP: 'Revoke access from a group',
+      CMD_EXEC: 'exec',
+      DESC_EXEC: 'Execute a command',
+      CMD_HALT: 'halt',
+      DESC_HALT: 'Exits the Bot process',
+      CMD_START: 'start',
+      DESC_START: 'Start the bot (does nothing really)',
+      CMD_INTRO: 'intro',
+      DESC_INTRO: 'Introduce the current AI role',
+      CMD_GENIMG: 'genimg',
+      DESC_GENIMG: 'Create an image using generative AI',
+      CMD_GENVID: 'genvid',
+      DESC_GENVID: 'Create a video using generative AI',
+      CMD_SETPARAM: 'setparam',
+      DESC_SETPARAM: 'Setup the AI\'s parameters',
+      CMD_GETPARAM: 'getparam',
+      DESC_GETPARAM: 'Get the AI\'s parameters',
+      CMD_SETROLE: 'setrole',
+      DESC_SETROLE: 'Set the AI\'s persona to a new role',
+      CMD_GETROLE: 'getrole',
+      DESC_GETROLE: 'Get the AI\'s persona',
+      CMD_RESETROLE: 'resetrole',
+      DESC_RESETROLE: 'Restore default AI persona',
+      CMD_WIPECONTEXT: 'wipecontext',
+      DESC_WIPECONTEXT: 'Removes all context from the current AI',
+      CMD_WIPEMEMORY: 'wipememory',
+      DESC_WIPEMEMORY: 'Removes all context and persona from the current AI',
+      CMD_DOWNLOADMEMORY: 'downloadmemory',
+      DESC_DOWNLOADMEMORY: 'Get a copy of the current context',
+    };
     
-    this.commands.addBotOwner('exec', this.handleExecuteCommand.bind(this), 'Execute a command');
-    this.commands.addBotOwner('halt', this.handleHalt.bind(this), 'Exits the Bot process');
+    this.commands.addBotAdmin(T.CMD_ADDADMIN, this.handleAddAdmin.bind(this), T.DESC_ADDADMIN);
+    this.commands.addBotAdmin(T.CMD_REMOVEADMIN, this.handleRemoveAdmin.bind(this), T.DESC_REMOVEADMIN);
+    this.commands.addBotAdmin(T.CMD_ADDWHITELISTEDGROUP, this.handleAddWhiteListedGroup.bind(this), T.DESC_ADDWHITELISTEDGROUP);
+    this.commands.addBotAdmin(T.CMD_REMOVEWHITELISTEDGROUP, this.handleRemoveWhiteListedGroup.bind(this), T.DESC_REMOVEWHITELISTEDGROUP);
     
-    this.commands.addGroupAdmin('start', this.handleStart.bind(this), 'Start the bot (does nothing really)');
-    this.commands.addGroupAdmin('intro', this.handleIntroduce.bind(this), 'Introduce the current AI role'); 
-    this.commands.addGroupAdmin('genimg', this.handleGenerateImage.bind(this), 'Create an image using generative AI');
-    this.commands.addGroupAdmin('genvid', this.handleGenerateVideo.bind(this), 'Create a video using generative AI');
-    this.commands.addGroupAdmin('setparam', this.handleSetParameter.bind(this), 'Setup the AI\'s parameters');
-    this.commands.addGroupAdmin('getparam', this.handleGetParameter.bind(this), 'Get the AI\'s parameters');
-    this.commands.addGroupAdmin('setrole', this.handleSetRole.bind(this), 'Set the AI\'s persona to a new role');
-    this.commands.addGroupAdmin('getrole', this.handleGetRole.bind(this), 'Get the AI\'s persona');
-    this.commands.addGroupAdmin('resetrole', this.handleResetRole.bind(this), 'Restore default AI persona');
-    this.commands.addGroupAdmin('wipecontext', this.handleWipeContext.bind(this), 'Removes all context from the current AI');
-    this.commands.addGroupAdmin('wipememory', this.handleWipeMemory.bind(this), 'Removes all context and persona from the current AI');
-    this.commands.addGroupAdmin('downloadmemory', this.handleDownloadMemory.bind(this), 'Get a copy of the current context');
+    this.commands.addBotOwner(T.CMD_EXEC, this.handleExecuteCommand.bind(this), T.DESC_EXEC);
+    this.commands.addBotOwner(T.CMD_HALT, this.handleHalt.bind(this), T.DESC_HALT);
     
-    this.commands.addUser('start', this.handleStart.bind(this), 'Start the bot (does nothing really)');
-    this.commands.addUser('intro', this.handleIntroduce.bind(this), 'Introduce the current AI role');   
-    this.commands.addUser('genimg', this.handleGenerateImage.bind(this), 'Create an image using generative AI');
-    this.commands.addUser('genvid', this.handleGenerateVideo.bind(this), 'Create a video using generative AI');
-    this.commands.addUser('setparam', this.handleSetParameter.bind(this), 'Setup the AI\'s parameters');
-    this.commands.addUser('getparam', this.handleGetParameter.bind(this), 'Get the AI\'s parameters');
-    this.commands.addUser('setrole', this.handleSetRole.bind(this), 'Set the AI\'s persona to a new role');
-    this.commands.addUser('getrole', this.handleGetRole.bind(this), 'Get the AI\'s persona');
-    this.commands.addUser('resetrole', this.handleResetRole.bind(this), 'Restore default AI persona');
-    this.commands.addUser('wipecontext', this.handleWipeContext.bind(this), 'Removes all context from the current AI');
-    this.commands.addUser('wipememory', this.handleWipeMemory.bind(this), 'Removes all context and persona from the current AI');
-    this.commands.addUser('downloadmemory', this.handleDownloadMemory.bind(this), 'Get a copy of the current context');
+    this.commands.addGroupAdmin(T.CMD_START, this.handleStart.bind(this), T.DESC_START);
+    this.commands.addGroupAdmin(T.CMD_INTRO, this.handleIntroduce.bind(this), T.DESC_INTRO);
+    this.commands.addGroupAdmin(T.CMD_GENIMG, this.handleGenerateImage.bind(this), T.DESC_GENIMG);
+    this.commands.addGroupAdmin(T.CMD_GENVID, this.handleGenerateVideo.bind(this), T.DESC_GENVID);
+    this.commands.addGroupAdmin(T.CMD_SETPARAM, this.handleSetParameter.bind(this), T.DESC_SETPARAM);
+    this.commands.addGroupAdmin(T.CMD_GETPARAM, this.handleGetParameter.bind(this), T.DESC_GETPARAM);
+    this.commands.addGroupAdmin(T.CMD_SETROLE, this.handleSetRole.bind(this), T.DESC_SETROLE);
+    this.commands.addGroupAdmin(T.CMD_GETROLE, this.handleGetRole.bind(this), T.DESC_GETROLE);
+    this.commands.addGroupAdmin(T.CMD_RESETROLE, this.handleResetRole.bind(this), T.DESC_RESETROLE);
+    this.commands.addGroupAdmin(T.CMD_WIPECONTEXT, this.handleWipeContext.bind(this), T.DESC_WIPECONTEXT);
+    this.commands.addGroupAdmin(T.CMD_WIPEMEMORY, this.handleWipeMemory.bind(this), T.DESC_WIPEMEMORY);
+    this.commands.addGroupAdmin(T.CMD_DOWNLOADMEMORY, this.handleDownloadMemory.bind(this), T.DESC_DOWNLOADMEMORY);
     
-    this.commands.addGroup('intro', this.handleIntroduce.bind(this), 'Introduce the current AI role'); 
-    this.commands.addGroup('genimg', this.handleGenerateImage.bind(this), 'Create an image using generative AI');
-    this.commands.addGroup('genvid', this.handleGenerateVideo.bind(this), 'Create a video using generative AI');
+    this.commands.addUser(T.CMD_START, this.handleStart.bind(this), T.DESC_START);
+    this.commands.addUser(T.CMD_INTRO, this.handleIntroduce.bind(this), T.DESC_INTRO);
+    this.commands.addUser(T.CMD_GENIMG, this.handleGenerateImage.bind(this), T.DESC_GENIMG);
+    this.commands.addUser(T.CMD_GENVID, this.handleGenerateVideo.bind(this), T.DESC_GENVID);
+    this.commands.addUser(T.CMD_SETPARAM, this.handleSetParameter.bind(this), T.DESC_SETPARAM);
+    this.commands.addUser(T.CMD_GETPARAM, this.handleGetParameter.bind(this), T.DESC_GETPARAM);
+    this.commands.addUser(T.CMD_SETROLE, this.handleSetRole.bind(this), T.DESC_SETROLE);
+    this.commands.addUser(T.CMD_GETROLE, this.handleGetRole.bind(this), T.DESC_GETROLE);
+    this.commands.addUser(T.CMD_RESETROLE, this.handleResetRole.bind(this), T.DESC_RESETROLE);
+    this.commands.addUser(T.CMD_WIPECONTEXT, this.handleWipeContext.bind(this), T.DESC_WIPECONTEXT);
+    this.commands.addUser(T.CMD_WIPEMEMORY, this.handleWipeMemory.bind(this), T.DESC_WIPEMEMORY);
+    this.commands.addUser(T.CMD_DOWNLOADMEMORY, this.handleDownloadMemory.bind(this), T.DESC_DOWNLOADMEMORY);
+    
+    this.commands.addGroup(T.CMD_INTRO, this.handleIntroduce.bind(this), T.DESC_INTRO);
+    this.commands.addGroup(T.CMD_GENIMG, this.handleGenerateImage.bind(this), T.DESC_GENIMG);
+    this.commands.addGroup(T.CMD_GENVID, this.handleGenerateVideo.bind(this), T.DESC_GENVID);
   }
 
   async completeResponseProbabilities(msg, uniqueAi) {
@@ -109,7 +148,7 @@ class vxAssistBotBot extends Ent42TelegramBot {
       let lPos = 0;
       let rPos = content.indexOf('```', 0);
 
-      while (rPos !== -1) { 
+      while (rPos !== -1) {
         let entity = content.substring(lPos, rPos);
 
         if (entity.startsWith('```')) {
@@ -157,7 +196,7 @@ class vxAssistBotBot extends Ent42TelegramBot {
           break;
 
         case 'private':
-          allowed = this.isAdminUser(msg.from.username);
+          allowed = this.isBotAdmin(msg.from.id) || this.isBotOwner(msg.from.id);
           break;
 
         default:
@@ -300,7 +339,7 @@ class vxAssistBotBot extends Ent42TelegramBot {
 
     return this.bot.sendDocument(msg.chat.id, buff,
       { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id, caption: `Enjoy the memory` },
-      { filename: `${msg.from.username}-${msg.chat.title}-Memory.txt`, contentType: 'text/plain' }) 
+      { filename: `${msg.from.username}-${msg.chat.title}-Memory.txt`, contentType: 'text/plain' })
   }
 
   handleWipeMemory(msg, params) {
@@ -434,18 +473,28 @@ class vxAssistBotBot extends Ent42TelegramBot {
 
   handleAddAdmin(msg, params) {
     const username = params[0];
+    const user = this.getCachedUserByName(username);
 
-    if (!this.adminUsers.includes(username)) {
-      this.adminUsers.push(username);
+    if (!user) {
+      return this.send(msg, `${username} is unknown to this bot. Please have the user interact at least once first!`);
+    }
+
+    if (!this.adminUsers.includes(user.id)) {
+      this.adminUsers.push(user.id);
       this.saveStorage();
-      return this.send(msg, `@${username} has been added as an admin user.`);
+      return this.send(msg, `${user.username} has been added as an admin user.`);
     } else {
-      return this.send(msg, `@${username} is already an admin user.`);
+      return this.send(msg, `${user.username} is already an admin user.`);
     }
   }
 
   handleRemoveAdmin(msg, params) {
     const username = params[0];
+    const user = this.getCachedUserByName(username);
+
+    if (!user) {
+      return this.send(msg, `@${username} is unknown to this bot. Please have the user interact at least once first!`);
+    }
 
     const index = this.adminUsers.indexOf(username);
     if (index !== -1) {
