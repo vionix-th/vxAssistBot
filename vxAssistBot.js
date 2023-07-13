@@ -513,9 +513,9 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     if (!this.adminUsers.includes(user.id)) {
       this.adminUsers.push(user.id);
       this.saveStorage();
-      return this.send(msg, `${user.username} has been added as an admin user.`);
+      return this.send(msg, `${username} has been added as an admin user.`);
     } else {
-      return this.send(msg, `${user.username} is already an admin user.`);
+      return this.send(msg, `${username} is already an admin user.`);
     }
   }
 
