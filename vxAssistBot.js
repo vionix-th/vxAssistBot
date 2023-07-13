@@ -4,6 +4,8 @@ const { Ent42TelegramBot } = require('ent42/telegramBot.js');
 const fs = require('fs');
 const path = require('path');
 const fileType = require('file-type');
+const { debug } = require('console');
+const packageJson = require('./package.json');
 
 class vxAssistBotBot extends Ent42TelegramBot {
   constructor() {
@@ -46,16 +48,60 @@ class vxAssistBotBot extends Ent42TelegramBot {
       DESC_WIPEMEMORY: 'Removes all context and persona from the current AI',
       CMD_DOWNLOADMEMORY: 'downloadmemory',
       DESC_DOWNLOADMEMORY: 'Get a copy of the current context',
+      CMD_VERSION: 'version',
+      DESC_VERSION: 'Get the Bot version',
+      CMD_ABOUT: 'about',
+      DESC_ABOUT: 'Read the about information',
+      CMD_HELP: 'help',
+      DESC_HELP: 'Read the help documentation',
     };
-    
+
     this.commands.addBotAdmin(T.CMD_ADDADMIN, this.handleAddAdmin.bind(this), T.DESC_ADDADMIN);
     this.commands.addBotAdmin(T.CMD_REMOVEADMIN, this.handleRemoveAdmin.bind(this), T.DESC_REMOVEADMIN);
     this.commands.addBotAdmin(T.CMD_ADDWHITELISTEDGROUP, this.handleAddWhiteListedGroup.bind(this), T.DESC_ADDWHITELISTEDGROUP);
     this.commands.addBotAdmin(T.CMD_REMOVEWHITELISTEDGROUP, this.handleRemoveWhiteListedGroup.bind(this), T.DESC_REMOVEWHITELISTEDGROUP);
-    
+
+    this.commands.addBotAdmin(T.CMD_VERSION, (msg) => {
+      this.send(msg, `${packageJson.version}`).catch(ex => { debug(ex.message) });
+    }, T.DESC_VERSION);
+
+    this.commands.addBotAdmin(T.CMD_ABOUT, (msg) => {
+      var about = '';
+
+      about += 'Version: ' + packageJson.version + '\n';
+      about += 'Author: ' + packageJson.author + '\n';
+      about += 'Website: ' + packageJson.homepage;
+
+      this.send(msg, about).catch(ex => { debug(ex.message) });
+    }, T.DESC_ABOUT);
+
+    this.commands.addBotAdmin(T.CMD_HELP, (msg) => {
+      var helpText = '';
+
+      this.commands.forEachUniqueCommand((trigger, command) => {
+
+        if (command.adminOnly && !this.isBotAdmin(msg.from.id)) {          
+        }else if(command.ownerOnly && !this.isBotOwner(msg.from.id)) {          
+        }else {
+          helpText += '`'; 
+          helpText += '/' + trigger; 
+          helpText += '`'; 
+          helpText += '\n_' + this.escapeMarkupV2String(command.description) + '_\n\n';
+        }        
+
+      }).then(() => { 
+        var markup = '';
+
+        markup += '*Available Commands:*\n\n';
+        markup += helpText;
+
+        this.send(msg, markup, { parse_mode: 'MarkdownV2' }).catch(ex => { debugOut(ex.message) });
+      });
+    }, T.DESC_HELP);
+
     this.commands.addBotOwner(T.CMD_EXEC, this.handleExecuteCommand.bind(this), T.DESC_EXEC);
     this.commands.addBotOwner(T.CMD_HALT, this.handleHalt.bind(this), T.DESC_HALT);
-    
+
     this.commands.addGroupAdmin(T.CMD_START, this.handleStart.bind(this), T.DESC_START);
     this.commands.addGroupAdmin(T.CMD_INTRO, this.handleIntroduce.bind(this), T.DESC_INTRO);
     this.commands.addGroupAdmin(T.CMD_GENIMG, this.handleGenerateImage.bind(this), T.DESC_GENIMG);
@@ -68,7 +114,7 @@ class vxAssistBotBot extends Ent42TelegramBot {
     this.commands.addGroupAdmin(T.CMD_WIPECONTEXT, this.handleWipeContext.bind(this), T.DESC_WIPECONTEXT);
     this.commands.addGroupAdmin(T.CMD_WIPEMEMORY, this.handleWipeMemory.bind(this), T.DESC_WIPEMEMORY);
     this.commands.addGroupAdmin(T.CMD_DOWNLOADMEMORY, this.handleDownloadMemory.bind(this), T.DESC_DOWNLOADMEMORY);
-    
+
     this.commands.addUser(T.CMD_START, this.handleStart.bind(this), T.DESC_START);
     this.commands.addUser(T.CMD_INTRO, this.handleIntroduce.bind(this), T.DESC_INTRO);
     this.commands.addUser(T.CMD_GENIMG, this.handleGenerateImage.bind(this), T.DESC_GENIMG);
@@ -81,7 +127,7 @@ class vxAssistBotBot extends Ent42TelegramBot {
     this.commands.addUser(T.CMD_WIPECONTEXT, this.handleWipeContext.bind(this), T.DESC_WIPECONTEXT);
     this.commands.addUser(T.CMD_WIPEMEMORY, this.handleWipeMemory.bind(this), T.DESC_WIPEMEMORY);
     this.commands.addUser(T.CMD_DOWNLOADMEMORY, this.handleDownloadMemory.bind(this), T.DESC_DOWNLOADMEMORY);
-    
+
     this.commands.addGroup(T.CMD_INTRO, this.handleIntroduce.bind(this), T.DESC_INTRO);
     this.commands.addGroup(T.CMD_GENIMG, this.handleGenerateImage.bind(this), T.DESC_GENIMG);
     this.commands.addGroup(T.CMD_GENVID, this.handleGenerateVideo.bind(this), T.DESC_GENVID);
