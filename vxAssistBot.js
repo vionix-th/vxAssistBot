@@ -24,6 +24,8 @@ class vxAssistBotBot extends CuteAiTelegramBot {
       DESC_EXEC: 'Execute a command',
       CMD_HALT: 'halt',
       DESC_HALT: 'Exits the Bot process',
+      CMD_UPDATE: 'update',
+      DESC_UPDATE: 'git pull and exit',
       CMD_START: 'start',
       DESC_START: 'Start the bot (does nothing really)',
       CMD_INTRO: 'intro',
@@ -66,6 +68,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
      */
     this.commands.addBotOwner(T.CMD_EXEC, this.handleExecuteCommand.bind(this), T.DESC_EXEC);
     this.commands.addBotOwner(T.CMD_HALT, this.handleHalt.bind(this), T.DESC_HALT);
+    this.commands.addBotOwner(T.CMD_UPDATE, this.handleUpdate.bind(this), T.DESC_UPDATE);
 
     /* Bot Admin */
     this.commands.addBotAdmin(T.CMD_ADDADMIN, this.handleAddAdmin.bind(this), T.DESC_ADDADMIN);
@@ -146,15 +149,15 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     this.commands.addUser(
       this.commands.addGroup(
         this.commands.addGroupAdmin(T.CMD_INTRO, this.handleIntroduce.bind(this), T.DESC_INTRO)
-    ));
+      ));
     this.commands.addUser(
       this.commands.addGroup(
         this.commands.addGroupAdmin(T.CMD_GENIMG, this.handleGenerateImage.bind(this), T.DESC_GENIMG)
-    ));
+      ));
     this.commands.addUser(
       this.commands.addGroup(
         this.commands.addGroupAdmin(T.CMD_GENVID, this.handleGenerateVideo.bind(this), T.DESC_GENVID)
-    ));
+      ));
 
     /* Group Admin & User */
     this.commands.addUser(
@@ -385,6 +388,11 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     });
 
     return Promise.all(promises);
+  }
+
+  handleUpdate(msg, params) {
+    return this.handleExecuteCommand(msg, ['-i', 'git', 'pull']).then(() => {
+    }).then(() => { return this.handleHalt(msg, []) });
   }
 
   handleDownloadMemory(msg, params) {
