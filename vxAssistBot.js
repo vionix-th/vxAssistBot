@@ -340,59 +340,63 @@ class vxAssistBotBot extends CuteAiTelegramBot {
       params.shift();
     }
 
-    const p = spawn(params[0], params.slice(1));
+    const rootPromise = new Promise((resolve, reject) => {
+      const p = spawn(params[0], params.slice(1));
 
-    var bStdout = '';
-    var bStderr = '';
+      var bStdout = '';
+      var bStderr = '';
 
-    p.stderr.on('data', data => { bStderr += data; });
-    p.stdout.on('data', data => { bStdout += data; });
+      p.stderr.on('data', data => { bStderr += data; });
+      p.stdout.on('data', data => { bStdout += data; });
 
-    const promises = [];
+      const promises = [];
 
-    p.on('exit', code => {
+      p.on('exit', code => {
+        if (bStdout.length > 0) {
+          var buff = Buffer.from(bStdout)
+          var type = fileType(buff);
+          type = type ? type : { ext: 'txt', mime: 'text/plain' };
 
-      if (bStdout.length > 0) {
-        var buff = Buffer.from(bStdout)
-        var type = fileType(buff);
-        type = type ? type : { ext: 'txt', mime: 'text/plain' };
 
-
-        if (type.ext === 'txt' && inline) {
-          promises.push(this.send(msg, buff.toString()));
-        } else {
-          promises.push(
-            this.bot.sendDocument(msg.chat.id, buff,
-              { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id, caption: `Here is the output for command: ${params.join(' ')}` },
-              { filename: `stdout.${type.ext}`, contentType: `${type.mime}` }
-            )
-          );
+          if (type.ext === 'txt' && inline) {
+            promises.push(this.send(msg, buff.toString()));
+          } else {
+            promises.push(
+              this.bot.sendDocument(msg.chat.id, buff,
+                { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id, caption: `Here is the output for command: ${params.join(' ')}` },
+                { filename: `stdout.${type.ext}`, contentType: `${type.mime}` }
+              )
+            );
+          }
         }
-      }
 
-      if (bStderr.length > 0) {
-        var buff = Buffer.from(bStderr)
-        var type = fileType(buff);
-        type = type ? type : { ext: 'txt', mime: 'text/plain' };
+        if (bStderr.length > 0) {
+          var buff = Buffer.from(bStderr)
+          var type = fileType(buff);
+          type = type ? type : { ext: 'txt', mime: 'text/plain' };
 
-        if (type.ext === 'txt' && inline) {
-          promises.push(this.send(msg, buff.toString()));
-        } else {
-          promises.push(
-            this.bot.sendDocument(msg.chat.id, buff,
-              { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id, caption: `Here is the output for command: ${params.join(' ')}` },
-              { filename: `stderr.${type.ext}`, contentType: `${type.mime}` })
-          );
+          if (type.ext === 'txt' && inline) {
+            promises.push(this.send(msg, buff.toString()));
+          } else {
+            promises.push(
+              this.bot.sendDocument(msg.chat.id, buff,
+                { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id, caption: `Here is the output for command: ${params.join(' ')}` },
+                { filename: `stderr.${type.ext}`, contentType: `${type.mime}` })
+            );
+          }
         }
-      }
+        resolve(promises);
+      });    
     });
 
-    return Promise.all(promises);
+    return rootPromise.then((promises) => {
+      return Promise.all(promises);
+    });
   }
 
   handleUpdate(msg, params) {
     return this.handleExecuteCommand(msg, ['-i', 'git', 'pull']).then(() => {
-      return this.handleHalt(msg, []);
+      return this.handleHalt(msg);
     });
   }
 
