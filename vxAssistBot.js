@@ -392,7 +392,8 @@ class vxAssistBotBot extends CuteAiTelegramBot {
 
   handleUpdate(msg, params) {
     return this.handleExecuteCommand(msg, ['-i', 'git', 'pull']).then(() => {
-    }).then(() => { return this.handleHalt(msg, []) });
+      return this.handleHalt(msg, []);
+    });
   }
 
   handleDownloadMemory(msg, params) {
