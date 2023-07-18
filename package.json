@@ -1,7 +1,7 @@
 {
   "name": "vxassistbot",
   "version": "1.0.0-Alpha1",
-  "description": "",
+  "description": "Your personal ai powered assistant on Telegram, Line and more!",
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -20,7 +20,7 @@
   "bugs": {
     "url": "https://github.com/entwickler42/vxAssistBot/issues"
   },
-  "homepage": "https://github.com/entwickler42/vxAssistBot#readme",
+  "homepage": "https://shop.cutecube.software",
   "dependencies": {
     "@huggingface/inference": "^2.5.1",
     "colors": "^1.4.0",

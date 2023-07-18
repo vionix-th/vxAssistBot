@@ -68,6 +68,8 @@ class vxAssistBotBot extends CuteAiTelegramBot {
       DESC_REDUCE: 'Remove N token from the current context',
       CMD_POPDIALOG: 'popdialog',
       DESC_POPDIALOG: 'Remove the latest Dialog from the current context',
+      CMD_USERINFO: 'userinfo',
+      DESC_USERINFO: 'Get information about your user account',
     };
 
     /**
@@ -168,7 +170,10 @@ class vxAssistBotBot extends CuteAiTelegramBot {
       this.commands.addGroup(
         this.commands.addGroupAdmin(T.CMD_GENVID, this.handleGenerateVideo.bind(this), T.DESC_GENVID)
       ));
-
+    this.commands.addUser(
+      this.commands.addGroup(
+        this.commands.addGroupAdmin(T.CMD_USERINFO, this.handleUserInfo.bind(this), T.DESC_USERINFO)
+      ));
     /* Group Admin & User */
     this.commands.addUser(
       this.commands.addGroupAdmin(T.CMD_SETPARAM, this.handleSetParameter.bind(this), T.DESC_SETPARAM)
@@ -192,7 +197,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
       this.commands.addGroupAdmin(T.CMD_WIPEMEMORY, this.handleWipeMemory.bind(this), T.DESC_WIPEMEMORY)
     );
     this.commands.addUser(
-      this.commands.addGroupAdmin(T.CMD_DOWNLOADMEMORY, this.handleDownloadMemory.bind(this), T.DESC_DOWNLOADMEMORY)
+      this.commands.addGroupAdmin(T.CMD_DOWNLOADMEMORY, this.handleUserInfo.bind(this), T.DESC_DOWNLOADMEMORY)
     );
 
     /**
@@ -262,21 +267,21 @@ class vxAssistBotBot extends CuteAiTelegramBot {
         case 'private':
           allowed = this.isBotAdmin(msg.from.id) || this.isBotOwner(msg.from.id);
 
-          if(!allowed){
+          if (!allowed) {
             allowed = msg.text.startsWith('/start') || msg.text.startsWith('/claimlicense');
           }
 
-          if(!allowed){
+          if (!allowed) {
             let licence = Licensing.getByConsumer(msg.from.id);
 
-            if(licence) {
+            if (licence) {
               debugOut(`Licensed access for consumer ${JSON.stringify(msg.from)}`);
               allowed = Licensing.validate(licence);
-            }else{
+            } else {
               debugOut(`No license for consumer ${JSON.stringify(msg.from)}`);
             }
           }
-          
+
           break;
 
         default:
@@ -287,12 +292,12 @@ class vxAssistBotBot extends CuteAiTelegramBot {
         debugOut(`Access denied for ${JSON.stringify(msg.from)}`);
 
         return this.send(msg, 'Access denied ✋').finally(() => {
-          if(msg.chat.type === 'supergroup' || msg.chat.type === 'group') {
+          if (msg.chat.type === 'supergroup' || msg.chat.type === 'group') {
             debugOut(`Leaving unauthorized group ${JSON.stringify(msg.chat)}`);
 
-            return this.bot.leaveChat(msg.chat.id).catch(error => { 
+            return this.bot.leaveChat(msg.chat.id).catch(error => {
               debugOut(error.message);
-            });  
+            });
           }
         });
       }
@@ -316,6 +321,22 @@ class vxAssistBotBot extends CuteAiTelegramBot {
 
   handleEditedMessage(msg) {
     this.handleMessage(msg);
+  }
+
+  handleUserInfo(msg) {
+    var licence = Licensing.getByConsumer(msg.from.id);
+    
+    if(this.isBotOwner(msg.from.id)) {
+      licence = { licId: '%Owner%' };
+    }else if(this.isBotAdmin(msg.from.id)) {
+      licence = { licId: '%Admin%' };
+    }
+
+    if(msg.chat.type === 'private') {
+      return this.send(msg, `User ID: ${msg.from.id}\nLicense ID: ${licence.licId}`);
+    }else{
+      return this.send(msg, `User ID: ${msg.from.id}\nGroup ID: ${msg.chat.id}\nLicense ID: ${licence.licId}`);
+    }
   }
 
   handleGenerateVideo(msg, params) {
@@ -360,8 +381,8 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     return this.send(msg, 'Halted').finally(() => {
       this.saveStorage();
       this.bot.stopPolling().finally(() => {
-        process.exit();  
-      });  
+        process.exit();
+      });
     });
   }
 
@@ -424,7 +445,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
           }
         }
         resolve(promises);
-      });    
+      });
     });
 
     return rootPromise.then((promises) => {
@@ -452,7 +473,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
 
     var licence = Licensing.getById(params[0])
 
-    if(!licence) {
+    if (!licence) {
       return this.send(msg, 'Invalid license 🤷‍♂️');
     }
 
@@ -467,8 +488,8 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     if (args.length < 1) {
       return this.send(msg, 'usage: /claimlicense [license]');
     }
-    
-    if(!Licensing.claim(params[0], msg.from.id)){
+
+    if (!Licensing.claim(params[0], msg.from.id)) {
       return this.send(msg, `License claim unsuccessfully 😢`);
     }
 
@@ -601,7 +622,19 @@ class vxAssistBotBot extends CuteAiTelegramBot {
   }
 
   handleStart(msg, params) {
-    return this.bot.sendMessage(msg.chat.id, 'By the Power of Grayskull ⚔️💪');
+    var welcome = `Welcome to ${packageJson.name} 👋\n\n${packageJson.description}`;
+    var licence = Licensing.getByConsumer(msg.from.id);
+
+    if (licence && Licensing.validate(licence)) {
+      welcome = `${welcome}\n\nHow can I serve you today?`;
+    } else {
+      welcome = `${welcome}\n\nPlease visit ${packageJson.homepage} to obtain a license 🙏`;
+      welcome = `${welcome}\n\nYou can activate your license key using the /claimlicense [key] command.`;
+      welcome = `${welcome}\n\nFor example:`;
+      welcome = `${welcome}` + '\n\n/claimlicense 111-1111-1111-1111111';
+    }
+
+    return this.bot.sendMessage(msg.chat.id, welcome);
   }
 
   handleIntroduce(msg, params) {
