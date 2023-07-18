@@ -20,7 +20,7 @@
   "bugs": {
     "url": "https://github.com/entwickler42/vxAssistBot/issues"
   },
-  "homepage": "https://shop.cutecube.software",
+  "homepage": "http://shop.cutecube.software",
   "dependencies": {
     "@huggingface/inference": "^2.5.1",
     "colors": "^1.4.0",

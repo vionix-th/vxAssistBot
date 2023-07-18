@@ -12,150 +12,27 @@ const { debug } = require('console');
 class vxAssistBotBot extends CuteAiTelegramBot {
   constructor() {
     super();
+  }
 
-    const T = {
-      CMD_ADDADMIN: 'addadmin',
-      DESC_ADDADMIN: 'Grant admin privileges to a user',
-      CMD_REMOVEADMIN: 'removeadmin',
-      DESC_REMOVEADMIN: 'Revoke admin privileges for a user',
-      CMD_ADDWHITELISTEDGROUP: 'addwhitelistedgroup',
-      DESC_ADDWHITELISTEDGROUP: 'Grant access to a group',
-      CMD_REMOVEWHITELISTEDGROUP: 'removewhitelistedgroup',
-      DESC_REMOVEWHITELISTEDGROUP: 'Revoke access from a group',
-      CMD_EXEC: 'exec',
-      DESC_EXEC: 'Execute a command',
-      CMD_HALT: 'halt',
-      DESC_HALT: 'Exits the Bot process',
-      CMD_UPDATE: 'update',
-      DESC_UPDATE: 'git pull and exit',
-      CMD_ISSUELIC: 'issuelicense',
-      DESC_ISSUELIC: 'create a new license key',
-      CMD_REVOKELIC: 'revokelicense',
-      DESC_REVOKELIC: 'revoke a license key',
-      CMD_CLAIMLIC: 'claimlicense',
-      DESC_CLAIMLIC: 'link a license key to your account',
-      CMD_START: 'start',
-      DESC_START: 'Start the bot (does nothing really)',
-      CMD_INTRO: 'intro',
-      DESC_INTRO: 'Introduce the current AI role',
-      CMD_GENIMG: 'genimg',
-      DESC_GENIMG: 'Create an image using generative AI',
-      CMD_GENVID: 'genvid',
-      DESC_GENVID: 'Create a video using generative AI',
-      CMD_SETPARAM: 'setparam',
-      DESC_SETPARAM: 'Setup the AI\'s parameters',
-      CMD_GETPARAM: 'getparam',
-      DESC_GETPARAM: 'Get the AI\'s parameters',
-      CMD_SETROLE: 'setrole',
-      DESC_SETROLE: 'Set the AI\'s persona to a new role',
-      CMD_GETROLE: 'getrole',
-      DESC_GETROLE: 'Get the AI\'s persona',
-      CMD_RESETROLE: 'resetrole',
-      DESC_RESETROLE: 'Restore default AI persona',
-      CMD_WIPECONTEXT: 'wipecontext',
-      DESC_WIPECONTEXT: 'Removes all context from the current AI',
-      CMD_WIPEMEMORY: 'wipememory',
-      DESC_WIPEMEMORY: 'Removes all context and persona from the current AI',
-      CMD_DOWNLOADMEMORY: 'downloadmemory',
-      DESC_DOWNLOADMEMORY: 'Get a copy of the current context',
-      CMD_VERSION: 'version',
-      DESC_VERSION: 'Get the Bot version',
-      CMD_ABOUT: 'about',
-      DESC_ABOUT: 'Read the about information',
-      CMD_HELP: 'help',
-      DESC_HELP: 'Read the help documentation',
-      CMD_REDUCE: 'reducecontext',
-      DESC_REDUCE: 'Remove N token from the current context',
-      CMD_POPDIALOG: 'popdialog',
-      DESC_POPDIALOG: 'Remove the latest Dialog from the current context',
-      CMD_USERINFO: 'userinfo',
-      DESC_USERINFO: 'Get information about your user account',
-    };
+  async SetupContextCommands() {
+    const T = JSON.parse(fs.readFileSync('strings.en_US.json'));
 
     /**
      * Bot Owner
      * Those commands might compromise system security and should be used with caution
      */
-    this.commands.addBotOwner(T.CMD_EXEC, this.handleExecuteCommand.bind(this), T.DESC_EXEC);
     this.commands.addBotOwner(T.CMD_HALT, this.handleHalt.bind(this), T.DESC_HALT);
     this.commands.addBotOwner(T.CMD_UPDATE, this.handleUpdate.bind(this), T.DESC_UPDATE);
+    this.commands.addBotOwner(T.CMD_EXEC, this.handleExecuteCommand.bind(this), T.DESC_EXEC);
     this.commands.addBotOwner(T.CMD_ISSUELIC, this.handleIssueLicense.bind(this), T.DESC_ISSUELIC);
     this.commands.addBotOwner(T.CMD_REVOKELIC, this.handleRevokeLicense.bind(this), T.DESC_REVOKELIC);
 
     /* Bot Admin */
+    this.commands.addBotAdmin(T.CMD_HELP, this.handleHelp.bind(this), T.DESC_HELP);
     this.commands.addBotAdmin(T.CMD_ADDADMIN, this.handleAddAdmin.bind(this), T.DESC_ADDADMIN);
     this.commands.addBotAdmin(T.CMD_REMOVEADMIN, this.handleRemoveAdmin.bind(this), T.DESC_REMOVEADMIN);
     this.commands.addBotAdmin(T.CMD_ADDWHITELISTEDGROUP, this.handleAddWhiteListedGroup.bind(this), T.DESC_ADDWHITELISTEDGROUP);
     this.commands.addBotAdmin(T.CMD_REMOVEWHITELISTEDGROUP, this.handleRemoveWhiteListedGroup.bind(this), T.DESC_REMOVEWHITELISTEDGROUP);
-
-    this.commands.addBotAdmin(T.CMD_VERSION, (msg) => {
-      this.send(msg, `${packageJson.version}`).catch(ex => { debugLog(ex.message) });
-    }, T.DESC_VERSION);
-
-    this.commands.addBotAdmin(T.CMD_ABOUT, (msg) => {
-      var about = '';
-
-      about += 'Version: ' + packageJson.version + '\n';
-      about += 'Author: ' + packageJson.author + '\n';
-      about += 'Website: ' + packageJson.homepage;
-
-      this.send(msg, about).catch(ex => { debugOut(ex.message) });
-    }, T.DESC_ABOUT);
-
-    this.commands.addBotAdmin(T.CMD_HELP, (msg) => {
-      var helpText = '';
-
-      this.commands.forEachUniqueCommand((trigger, command) => {
-
-        if (command.adminOnly && !this.isBotAdmin(msg.from.id)) {
-          // Do nothing, effectively hiding admin commands to regular users
-          // Warning! The commands are still callable and need to be secured elsewhere
-        } else if (command.ownerOnly && !this.isBotOwner(msg.from.id)) {
-          // Do nothing, effectively hiding owner commands everyone else
-          // Warning! The commands are still callable and need to be secured elsewhere
-        } else {
-          helpText += '`';
-          helpText += '/' + trigger;
-          helpText += '`';
-          helpText += '\n_' + escapeMarkupV2String(command.description) + '_\n\n';
-        }
-
-      }).then(() => {
-        var markup = '';
-
-        markup += '*Available Commands:*\n\n';
-        markup += helpText;
-
-        this.send(msg, markup, { parse_mode: 'MarkdownV2' }).catch(ex => { debugOut(ex.message) });
-      });
-    }, T.DESC_HELP);
-
-    this.commands.addBotAdmin(T.CMD_REDUCE, (msg, params) => {
-      const { uniqueAi, config } = this.uniqueAiForChat(msg);
-
-      var n = Math.min(Math.abs(parseInt(params[0] ?? 0), uniqueAi.persona.maxToken));
-
-      uniqueAi.reduceContext(n);
-      this.saveStorage();
-
-      this.send(msg, `Current context successfully reduced to ${n} token 🧠`).catch(ex => {
-        debugOut(ex.message)
-      });
-    }, T.DESC_REDUCE);
-
-    this.commands.addBotAdmin(T.CMD_POPDIALOG, (msg) => {
-      const { uniqueAi, config } = this.uniqueAiForChat(msg);
-
-      var dlg = uniqueAi.popDialog();
-      this.saveStorage();
-
-      debugOut('context removed > ' + dlg.message.content.substring(0, 20) + '...');
-      debugOut('context removed > ' + dlg.response.content.substring(0, 20) + '...');
-
-      this.send(msg, `Ok, the previous dialog never happened 🧠`).catch(ex => {
-        debugOut(ex.message)
-      });
-    }, T.DESC_POPDIALOG);
 
     /* Group Admin, Group & User */
     this.commands.addUser(
@@ -174,6 +51,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
       this.commands.addGroup(
         this.commands.addGroupAdmin(T.CMD_USERINFO, this.handleUserInfo.bind(this), T.DESC_USERINFO)
       ));
+
     /* Group Admin & User */
     this.commands.addUser(
       this.commands.addGroupAdmin(T.CMD_SETPARAM, this.handleSetParameter.bind(this), T.DESC_SETPARAM)
@@ -197,14 +75,23 @@ class vxAssistBotBot extends CuteAiTelegramBot {
       this.commands.addGroupAdmin(T.CMD_WIPEMEMORY, this.handleWipeMemory.bind(this), T.DESC_WIPEMEMORY)
     );
     this.commands.addUser(
+      this.commands.addGroupAdmin(T.CMD_ABOUT, this.handleAbout.bind(this), T.DESC_ABOUT)
+    );
+    this.commands.addUser(
       this.commands.addGroupAdmin(T.CMD_DOWNLOADMEMORY, this.handleUserInfo.bind(this), T.DESC_DOWNLOADMEMORY)
     );
+    this.commands.addUser(
+      this.commands.addGroupAdmin(T.CMD_REDUCE, this.handleReduce.bind(this), T.DESC_REDUCE)
+    );
+    this.commands.addUser(
+      this.commands.addGroupAdmin(T.CMD_POPDIALOG, this.handlePopDialog.bind(this), T.DESC_POPDIALOG)
+    );
 
-    /**
-     *  User
-    */
+    /* User */
     this.commands.addUser(T.CMD_START, this.handleStart.bind(this), T.DESC_START)
     this.commands.addUser(T.CMD_CLAIMLIC, this.handleClaimLicense.bind(this), T.DESC_CLAIMLIC)
+
+    await super.SetupContextCommands();
   }
 
   handleMessage(msg) {
@@ -268,7 +155,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
           allowed = this.isBotAdmin(msg.from.id) || this.isBotOwner(msg.from.id);
 
           if (!allowed) {
-            allowed = msg.text.startsWith('/start') 
+            allowed = msg.text.startsWith('/start')
               || msg.text.startsWith('/userinfo')
               || msg.text.startsWith('/claimlicense');
           }
@@ -327,20 +214,85 @@ class vxAssistBotBot extends CuteAiTelegramBot {
 
   handleUserInfo(msg) {
     var licence = Licensing.getByConsumer(msg.from.id);
-    
-    if(this.isBotOwner(msg.from.id)) {
+
+    if (this.isBotOwner(msg.from.id)) {
       licence = { licId: '%Owner%' };
-    }else if(this.isBotAdmin(msg.from.id)) {
+    } else if (this.isBotAdmin(msg.from.id)) {
       licence = { licId: '%Admin%' };
-    }else if(!licence) {
+    } else if (!licence) {
       licence = { licId: 'UNLICENSED 🥲' };
     }
 
-    if(msg.chat.type === 'private') {
+    if (msg.chat.type === 'private') {
       return this.send(msg, `User ID: ${msg.from.id}\nLicense ID: ${licence.licId}`);
-    }else{
+    } else {
       return this.send(msg, `User ID: ${msg.from.id}\nGroup ID: ${msg.chat.id}\nLicense ID: ${licence.licId}`);
     }
+  }
+
+  handleAbout(msg) {
+    var about = '';
+
+    about += 'Version: ' + packageJson.version + '\n';
+    about += 'Author: ' + packageJson.author + '\n';
+    about += 'Website: ' + packageJson.homepage;
+
+    this.send(msg, about).catch(ex => { debugOut(ex.message) });
+  }
+
+  handleHelp(msg) {
+    var helpText = '';
+
+    this.commands.forEachUniqueCommand((trigger, command) => {
+
+      if (command.adminOnly && !this.isBotAdmin(msg.from.id)) {
+        // Do nothing, effectively hiding admin commands to regular users
+        // Warning! The commands are still callable and need to be secured elsewhere
+      } else if (command.ownerOnly && !this.isBotOwner(msg.from.id)) {
+        // Do nothing, effectively hiding owner commands everyone else
+        // Warning! The commands are still callable and need to be secured elsewhere
+      } else {
+        helpText += '`';
+        helpText += '/' + trigger;
+        helpText += '`';
+        helpText += '\n_' + escapeMarkupV2String(command.description) + '_\n';
+      }
+
+    }).then(() => {
+      var markup = '';
+
+      markup += '*Available Commands:*\n\n';
+      markup += helpText;
+
+      this.send(msg, markup, { parse_mode: 'MarkdownV2' }).catch(ex => { debugOut(ex.message) });
+    });
+  }
+
+  handleReduce(msg, params) {
+    const { uniqueAi, config } = this.uniqueAiForChat(msg);
+
+    var n = Math.min(Math.abs(parseInt(params[0] ?? 0), uniqueAi.persona.maxToken));
+
+    uniqueAi.reduceContext(n);
+    this.saveStorage();
+
+    this.send(msg, `Current context successfully reduced to ${n} token 🧠`).catch(ex => {
+      debugOut(ex.message)
+    });
+  }
+
+  handlePopDialog(msg, params) {
+    const { uniqueAi, config } = this.uniqueAiForChat(msg);
+
+    var dlg = uniqueAi.popDialog();
+    this.saveStorage();
+
+    debugOut('context removed > ' + dlg.message.content.substring(0, 20) + '...');
+    debugOut('context removed > ' + dlg.response.content.substring(0, 20) + '...');
+
+    this.send(msg, `Ok, the previous dialog never happened 🧠`).catch(ex => {
+      debugOut(ex.message)
+    });
   }
 
   handleGenerateVideo(msg, params) {
