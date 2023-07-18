@@ -6,7 +6,7 @@ require('colors');
 const { AIOpenAI } = require('./AIOpenAI');
 const { AIHuggingFace } = require("./AIHuggingFace");
 const { AILocalSystem } = require("./AILocalSystem");
-const { readApiKey, debugOut } = require("./vxAssistCommon");
+const { escapeMarkupV2String, readApiKey, debugOut } = require("./vxAssistCommon");
 
 
 class AIInterface {
@@ -334,6 +334,35 @@ class AIInterface {
   }
 }
 
+const parseEntities = (content, escape = true) => {
+  let entities = [];
+
+  let lPos = 0;
+  let rPos = content.indexOf('```', 0);
+
+  while (rPos !== -1) {
+      let entity = content.substring(lPos, rPos);
+
+      if (entity.startsWith('```')) {
+          rPos += 3;
+          entity = content.substring(lPos, rPos);
+          entities.push({ entity, type: entity.substring(3, entity.indexOf('\n')) });
+      } else {
+          entities.push({ entity: escape ? escapeMarkupV2String(entity) : entity, type: 'plain' });
+      }
+      lPos = rPos;
+      rPos = content.indexOf('```', rPos + 3);
+  }
+
+  if (lPos < content.length) {
+      let entity = content.substring(lPos);
+      entities.push({ entity: escape ? escapeMarkupV2String(entity) : entity, type: 'plain' })
+  }
+
+  return entities.map((i) => i.entity);;
+}
+
 module.exports = {
-  AIInterface
+  AIInterface,
+  parseEntities
 };

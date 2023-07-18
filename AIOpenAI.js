@@ -16,8 +16,6 @@ class AIOpenAI {
     }
 };
 
-
-
 module.exports = {
     AIOpenAI
 }

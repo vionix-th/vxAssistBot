@@ -1,17 +1,16 @@
 const { spawn } = require('child_process');
 const { escapeMarkupV2String, sanitizeString, debugOut } = require('./vxAssistCommon.js');
 const { CuteAiTelegramBot } = require('ent42/telegramBot.js');
+const { Licensing } = require("ent42/license.js");
+const { parseEntities } = require('./AIInterface.js');
 const fs = require('fs');
 const path = require('path');
 const fileType = require('file-type');
 const packageJson = require('./package.json');
 
-const { Licensing } = require("ent42/license.js");
-const { debug } = require('console');
-
 class vxAssistBotBot extends CuteAiTelegramBot {
   constructor() {
-    super();
+    super(); 
   }
 
   async SetupContextCommands() {
@@ -94,90 +93,77 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     await super.SetupContextCommands();
   }
 
-  handleMessage(msg) {
+  verifyAuthorization(msg) {
+    var allowed = false;
 
-    this.updateCacheFromMessage(msg);
+    switch (msg.chat.type) {
+      case 'supergroup':
+      case 'group':
+        allowed = this.whiteListedGroups.has(msg.chat.title);
+        break;
 
-    const parseEntities = (content) => {
-      let entities = [];
+      case 'private':
+        allowed = this.isBotAdmin(msg.from.id) || this.isBotOwner(msg.from.id);
 
-      let lPos = 0;
-      let rPos = content.indexOf('```', 0);
-
-      while (rPos !== -1) {
-        let entity = content.substring(lPos, rPos);
-
-        if (entity.startsWith('```')) {
-          rPos += 3;
-          entity = content.substring(lPos, rPos);
-          entities.push({ entity, type: entity.substring(3, entity.indexOf('\n')) });
-        } else {
-          entities.push({ entity: escapeMarkupV2String(entity), type: 'plain' });
+        if (!allowed) {
+          allowed = msg.text.startsWith('/start')
+            || msg.text.startsWith('/userinfo')
+            || msg.text.startsWith('/claimlicense');
         }
-        lPos = rPos;
-        rPos = content.indexOf('```', rPos + 3);
-      }
 
-      if (lPos < content.length) {
-        let entity = content.substring(lPos);
-        entities.push({ entity: escapeMarkupV2String(entity), type: 'plain' })
-      }
+        if (!allowed) {
+          let licence = Licensing.getByConsumer(msg.from.id);
 
-      return entities.map((i) => i.entity);;
+          if (licence) {
+            debugOut(`Licensed access for consumer ${JSON.stringify(msg.from)}`);
+            allowed = Licensing.validate(licence);
+          } else {
+            debugOut(`No license for consumer ${JSON.stringify(msg.from)}`);
+          }
+        }
+
+        break;
+
+      default:
+        debugOut(msg);
     }
 
-    const handleCommandOrComplete = async (msg) => {
-      const command = this.parseCommand(msg.text);
+    return allowed;
+  }
 
-      if (command) {
-        const { commandName, params } = command;
-        return this.executeCommand(msg, commandName, params);
-      }
+  handleCommandOrComplete(msg, params) {
+    const command = this.parseCommand(msg.text);
 
-      return this.completeMessageConditional(msg).then(response => {
-        if (response) {
-          const entities = parseEntities(response.join('\n)'));
-          return this.send(msg, entities.join(''), { parse_mode: 'MarkdownV2' });
-        }
-      });
+    if (command) {
+      const { commandName, params } = command;
+      return this.executeCommand(msg, commandName, params);
     }
 
+    return this.completeMessageConditional(msg).then(response => {
+      if (response) {
+        const entities = parseEntities(response.join('\n)'));
+        return this.send(msg, entities.join(''), { parse_mode: 'MarkdownV2' });
+      }
+    });
+  }
+
+  handleMessage(msg, params) {
     try {
-      let allowed = false;
 
-      switch (msg.chat.type) {
-        case 'supergroup':
-        case 'group':
-          allowed = this.whiteListedGroups.has(msg.chat.title);
-          break;
+      this.updateCacheFromMessage(msg);
 
-        case 'private':
-          allowed = this.isBotAdmin(msg.from.id) || this.isBotOwner(msg.from.id);
+      if (this.verifyAuthorization(msg)) {
+        var keepActionAliveTimer = setInterval(() => {
+          this.bot.sendChatAction(msg.chat.id, 'typing', { message_thread_id: msg.message_thread_id });
+        }, 3000);
 
-          if (!allowed) {
-            allowed = msg.text.startsWith('/start')
-              || msg.text.startsWith('/userinfo')
-              || msg.text.startsWith('/claimlicense');
-          }
-
-          if (!allowed) {
-            let licence = Licensing.getByConsumer(msg.from.id);
-
-            if (licence) {
-              debugOut(`Licensed access for consumer ${JSON.stringify(msg.from)}`);
-              allowed = Licensing.validate(licence);
-            } else {
-              debugOut(`No license for consumer ${JSON.stringify(msg.from)}`);
-            }
-          }
-
-          break;
-
-        default:
-          debugOut(msg);
-      }
-
-      if (!allowed) {
+        return handleCommandOrComplete(msg, params).catch(error => {
+          return this.send(msg, error.message);
+        }).finally(() => {
+          clearInterval(keepActionAliveTimer);
+          this.saveStorage();
+        });
+      } else {
         debugOut(`Access denied for ${JSON.stringify(msg.from)}`);
 
         return this.send(msg, 'Access denied ✋').finally(() => {
@@ -190,29 +176,17 @@ class vxAssistBotBot extends CuteAiTelegramBot {
           }
         });
       }
-
-      var keepActionAliveTimer = setInterval(() => {
-        this.bot.sendChatAction(msg.chat.id, 'typing', { message_thread_id: msg.message_thread_id });
-      }, 3000);
-
-      return handleCommandOrComplete(msg).catch(error => {
-        return this.send(msg, error.message);
-      }).finally(() => {
-        clearInterval(keepActionAliveTimer);
-        this.saveStorage();
-      });
     } catch (error) {
       clearInterval(keepActionAliveTimer);
       debugOut(error.message);
-      throw error;
     }
   }
 
-  handleEditedMessage(msg) {
+  handleEditedMessage(msg, params) {
     this.handleMessage(msg);
   }
 
-  handleUserInfo(msg) {
+  handleUserInfo(msg, params) {
     var licence = Licensing.getByConsumer(msg.from.id);
 
     if (this.isBotOwner(msg.from.id)) {
@@ -230,7 +204,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     }
   }
 
-  handleAbout(msg) {
+  handleAbout(msg, params) {
     var about = '';
 
     about += 'Version: ' + packageJson.version + '\n';
@@ -240,7 +214,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     this.send(msg, about).catch(ex => { debugOut(ex.message) });
   }
 
-  handleHelp(msg) {
+  handleHelp(msg, params) {
     var helpText = '';
 
     this.commands.forEachUniqueCommand((trigger, command) => {
