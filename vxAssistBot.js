@@ -32,7 +32,9 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     this.commands.addBotAdmin(T.CMD_REMOVEADMIN, this.handleRemoveAdmin.bind(this), T.DESC_REMOVEADMIN);
     this.commands.addBotAdmin(T.CMD_ADDWHITELISTEDGROUP, this.handleAddWhiteListedGroup.bind(this), T.DESC_ADDWHITELISTEDGROUP);
     this.commands.addBotAdmin(T.CMD_REMOVEWHITELISTEDGROUP, this.handleRemoveWhiteListedGroup.bind(this), T.DESC_REMOVEWHITELISTEDGROUP);
-
+    this.commands.addBotAdmin(T.CMD_SETPARAM, this.handleSetParameter.bind(this), T.DESC_SETPARAM);
+    this.commands.addBotAdmin(T.CMD_GETPARAM, this.handleGetParameter.bind(this), T.DESC_GETPARAM);
+    
     /* Group Admin, Group & User */
     this.commands.addUser(
       this.commands.addGroup(
@@ -52,12 +54,6 @@ class vxAssistBotBot extends CuteAiTelegramBot {
       ));
 
     /* Group Admin & User */
-    this.commands.addUser(
-      this.commands.addGroupAdmin(T.CMD_SETPARAM, this.handleSetParameter.bind(this), T.DESC_SETPARAM)
-    );
-    this.commands.addUser(
-      this.commands.addGroupAdmin(T.CMD_GETPARAM, this.handleGetParameter.bind(this), T.DESC_GETPARAM)
-    );
     this.commands.addUser(
       this.commands.addGroupAdmin(T.CMD_SETROLE, this.handleSetRole.bind(this), T.DESC_SETROLE)
     );

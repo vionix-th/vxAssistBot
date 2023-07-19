@@ -155,3 +155,4 @@ node_modules/which-boxed-primitive
 node_modules/which-typed-array
 node_modules/wrappy
 node_modules/.package-lock.json
+licenseStore.json
