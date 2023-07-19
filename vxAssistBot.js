@@ -6,11 +6,13 @@ const { parseEntities } = require('./AIInterface.js');
 const fs = require('fs');
 const path = require('path');
 const fileType = require('file-type');
-const packageJson = require('./package.json');
 
 class vxAssistBotBot extends CuteAiTelegramBot {
   constructor() {
-    super(); 
+    super();
+
+    this.packageJson = require('./package.json');
+    this.T.MSG_ACCESS_DENIED = `Access denied 🥺\n\nPlease visit ${this.packageJson.homepage} for more information 🫶`;
   }
 
   async SetupContextCommands() {
@@ -34,7 +36,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     this.commands.addBotAdmin(T.CMD_REMOVEWHITELISTEDGROUP, this.handleRemoveWhiteListedGroup.bind(this), T.DESC_REMOVEWHITELISTEDGROUP);
     this.commands.addBotAdmin(T.CMD_SETPARAM, this.handleSetParameter.bind(this), T.DESC_SETPARAM);
     this.commands.addBotAdmin(T.CMD_GETPARAM, this.handleGetParameter.bind(this), T.DESC_GETPARAM);
-    
+
     /* Group Admin, Group & User */
     this.commands.addUser(
       this.commands.addGroup(
@@ -89,45 +91,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     await super.SetupContextCommands();
   }
 
-  verifyAuthorization(msg) {
-    var allowed = false;
-
-    switch (msg.chat.type) {
-      case 'supergroup':
-      case 'group':
-        allowed = this.whiteListedGroups.has(msg.chat.title);
-        break;
-
-      case 'private':
-        allowed = this.isBotAdmin(msg.from.id) || this.isBotOwner(msg.from.id);
-
-        if (!allowed) {
-          allowed = msg.text.startsWith('/start')
-            || msg.text.startsWith('/userinfo')
-            || msg.text.startsWith('/claimlicense');
-        }
-
-        if (!allowed) {
-          let licence = Licensing.getByConsumer(msg.from.id);
-
-          if (licence) {
-            debugOut(`Licensed access for consumer ${JSON.stringify(msg.from)}`);
-            allowed = Licensing.validate(licence);
-          } else {
-            debugOut(`No license for consumer ${JSON.stringify(msg.from)}`);
-          }
-        }
-
-        break;
-
-      default:
-        debugOut(msg);
-    }
-
-    return allowed;
-  }
-
-  handleCommandOrComplete(msg, params) {
+  async handleCommandOrComplete(msg, params) {
     const command = this.parseCommand(msg.text);
 
     if (command) {
@@ -145,32 +109,37 @@ class vxAssistBotBot extends CuteAiTelegramBot {
 
   handleMessage(msg, params) {
     try {
+      if (this.isAuthorized(msg)) {
+        this.updateCacheFromMessage(msg);
 
-      this.updateCacheFromMessage(msg);
+        if (msg.text) {
+          var keepActionAliveTimer = setInterval(() => {
+            this.bot.sendChatAction(msg.chat.id, 'typing', { message_thread_id: msg.message_thread_id });
+          }, 3000);
 
-      if (this.verifyAuthorization(msg)) {
-        var keepActionAliveTimer = setInterval(() => {
-          this.bot.sendChatAction(msg.chat.id, 'typing', { message_thread_id: msg.message_thread_id });
-        }, 3000);
-
-        return this.handleCommandOrComplete(msg, params).catch(error => {
-          return this.send(msg, error.message);
-        }).finally(() => {
-          clearInterval(keepActionAliveTimer);
-          this.saveToStorage();
-        });
+          return this.handleCommandOrComplete(msg, params).catch(error => {
+            return this.send(msg, error.message).catch(error => {
+              debugOut(error.message);
+            });
+          }).finally(() => {
+            clearInterval(keepActionAliveTimer);
+            this.saveToStorage();
+          });
+        }
       } else {
         debugOut(`Access denied for ${JSON.stringify(msg.from)}`);
 
-        return this.send(msg, 'Access denied ✋').finally(() => {
-          if (msg.chat.type === 'supergroup' || msg.chat.type === 'group') {
-            debugOut(`Leaving unauthorized group ${JSON.stringify(msg.chat)}`);
+        if (msg.chat.type === 'supergroup' || msg.chat.type === 'group') {
+          debugOut(`Leaving unauthorized group ${JSON.stringify(msg.chat)}`);
 
-            return this.bot.leaveChat(msg.chat.id).catch(error => {
-              debugOut(error.message);
-            });
-          }
-        });
+          return this.bot.leaveChat(msg.chat.id).catch(error => {
+            debugOut(error.message);
+          });            
+      }else{
+          return this.send(msg, this.T.MSG_ACCESS_DENIED).catch((error) => {
+            debugOut(error.message);
+          });
+        }      
       }
     } catch (error) {
       clearInterval(keepActionAliveTimer);
@@ -185,27 +154,27 @@ class vxAssistBotBot extends CuteAiTelegramBot {
   handleUserInfo(msg, params) {
     var licence = Licensing.getByConsumer(msg.from.id);
 
-    if (this.isBotOwner(msg.from.id)) {
-      licence = { licId: '%Owner%' };
-    } else if (this.isBotAdmin(msg.from.id)) {
-      licence = { licId: '%Admin%' };
+    if (this.isBotOwner(msg.from.id) || this.isBotAdmin(msg.from.id)) {
+      licence = Licensing.getRootLicense();
     } else if (!licence) {
-      licence = { licId: 'UNLICENSED 🥲' };
+      licence = { licId: 'UNLICENSED' };
     }
 
+    const licenceValid = Licensing.validate(licence);
+
     if (msg.chat.type === 'private') {
-      return this.send(msg, `User ID: ${msg.from.id}\nLicense ID: ${licence.licId}`);
+      return this.send(msg, `User ID: ${msg.from.id}\nLicense ID: ${licence.licId}\nLicense valid: ${licenceValid}`);
     } else {
-      return this.send(msg, `User ID: ${msg.from.id}\nGroup ID: ${msg.chat.id}\nLicense ID: ${licence.licId}`);
+      return this.send(msg, `User ID: ${msg.from.id}\nGroup ID: ${msg.chat.id}\nLicense ID: ${licence.licId}\nLicense valid: ${licenceValid}`);
     }
   }
 
   handleAbout(msg, params) {
     var about = '';
 
-    about += 'Version: ' + packageJson.version + '\n';
-    about += 'Author: ' + packageJson.author + '\n';
-    about += 'Website: ' + packageJson.homepage;
+    about += 'Version: ' + this.packageJson.version + '\n';
+    about += 'Author: ' + this.packageJson.author + '\n';
+    about += 'Website: ' + this.packageJson.homepage;
 
     this.send(msg, about).catch(ex => { debugOut(ex.message) });
   }
@@ -543,13 +512,13 @@ class vxAssistBotBot extends CuteAiTelegramBot {
   }
 
   handleStart(msg, params) {
-    var welcome = `Welcome to ${packageJson.name} 👋\n\n${packageJson.description}`;
+    var welcome = `Welcome to ${this.packageJson.name} 👋\n\n${this.packageJson.description}`;
     var licence = Licensing.getByConsumer(msg.from.id);
 
     if (licence && Licensing.validate(licence)) {
       welcome = `${welcome}\n\nHow can I serve you today?`;
     } else {
-      welcome = `${welcome}\n\nPlease visit ${packageJson.homepage} to obtain a license 🙏`;
+      welcome = `${welcome}\n\nPlease visit ${this.packageJson.homepage} to obtain a license 🙏`;
       welcome = `${welcome}\n\nYou can activate your license key using the /claimlicense [key] command.`;
       welcome = `${welcome}\n\nFor example:`;
       welcome = `${welcome}` + '\n\n/claimlicense 111-1111-1111-1111111';
