@@ -157,11 +157,11 @@ class vxAssistBotBot extends CuteAiTelegramBot {
           this.bot.sendChatAction(msg.chat.id, 'typing', { message_thread_id: msg.message_thread_id });
         }, 3000);
 
-        return handleCommandOrComplete(msg, params).catch(error => {
+        return this.handleCommandOrComplete(msg, params).catch(error => {
           return this.send(msg, error.message);
         }).finally(() => {
           clearInterval(keepActionAliveTimer);
-          this.saveStorage();
+          this.saveToStorage();
         });
       } else {
         debugOut(`Access denied for ${JSON.stringify(msg.from)}`);
@@ -248,7 +248,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     var n = Math.min(Math.abs(parseInt(params[0] ?? 0), uniqueAi.persona.maxToken));
 
     uniqueAi.reduceContext(n);
-    this.saveStorage();
+    this.saveToStorage();
 
     this.send(msg, `Current context successfully reduced to ${n} token 🧠`).catch(ex => {
       debugOut(ex.message)
@@ -259,7 +259,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     const { uniqueAi, config } = this.uniqueAiForChat(msg);
 
     var dlg = uniqueAi.popDialog();
-    this.saveStorage();
+    this.saveToStorage();
 
     debugOut('context removed > ' + dlg.message.content.substring(0, 20) + '...');
     debugOut('context removed > ' + dlg.response.content.substring(0, 20) + '...');
@@ -308,12 +308,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
   }
 
   handleHalt(msg, params) {
-    return this.send(msg, 'Halted').finally(() => {
-      this.saveStorage();
-      this.bot.stopPolling().finally(() => {
-        process.exit();
-      });
-    });
+    this.shutdown(msg);
   }
 
   handleExecuteCommand(msg, params) {
@@ -438,20 +433,20 @@ class vxAssistBotBot extends CuteAiTelegramBot {
   handleWipeMemory(msg, params) {
     const { uniqueAi, config } = this.uniqueAiForChat(msg);
     uniqueAi.wipeMemory();
-    this.saveStorage();
+    this.saveToStorage();
   }
 
   handleWipeContext(msg, params) {
     const { uniqueAi, config } = this.uniqueAiForChat(msg);
     uniqueAi.wipeContext();
-    this.saveStorage();
+    this.saveToStorage();
   }
 
   handleResetRole(msg, params) {
     const { uniqueAi, config } = this.uniqueAiForChat(msg);
 
     this.initializeUniqueAiRoleForChat(msg, uniqueAi);
-    this.saveStorage();
+    this.saveToStorage();
 
     return this.send(msg, 'AI persona reset to default');
   }
@@ -460,7 +455,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     const { uniqueAi, config } = this.uniqueAiForChat(msg);
 
     uniqueAi.assignRole([params.join(' ')], {});
-    this.saveStorage();
+    this.saveToStorage();
 
     return this.send(msg, 'New role was assigned to the AI!');
   }
@@ -502,7 +497,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
       }
     });
 
-    this.saveStorage();
+    this.saveToStorage();
   }
 
   handleGetParameter(msg, params) {
@@ -587,7 +582,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
 
     if (!this.adminUsers.includes(user.id)) {
       this.adminUsers.push(user.id);
-      this.saveStorage();
+      this.saveToStorage();
       return this.send(msg, `${username} has been added as an admin user.`);
     } else {
       return this.send(msg, `${username} is already an admin user.`);
@@ -605,7 +600,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     const index = this.adminUsers.indexOf(username);
     if (index !== -1) {
       this.adminUsers.splice(index, 1);
-      this.saveStorage();
+      this.saveToStorage();
       return this.send(msg, `@${username} has been removed from admin users.`);
     } else {
       return this.send(msg, `@${username} is not an admin user.`);
@@ -616,7 +611,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     const groupName = params[0];
 
     this.whiteListedGroups.add(groupName);
-    this.saveStorage();
+    this.saveToStorage();
     return this.send(msg, `Group ${groupName} has been whitelisted.`);
   }
 
@@ -625,7 +620,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
 
     if (this.whiteListedGroups.has(groupName)) {
       this.whiteListedGroups.delete(groupName);
-      this.saveStorage();
+      this.saveToStorage();
       return this.send(msg, `Group ${groupName} has been removed from the whitelist.`);
     } else {
       return this.send(msg, `Group ${groupName} is not whitelisted.`);
