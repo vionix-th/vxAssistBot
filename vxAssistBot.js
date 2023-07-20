@@ -1,5 +1,5 @@
 const { spawn } = require('child_process');
-const { escapeMarkupV2String, sanitizeString, debugOut } = require('./vxAssistCommon.js');
+const { escapeMarkupV2String, sanitizeString, debugOut, } = require('./vxAssistCommon.js');
 const { CuteAiTelegramBot } = require('ent42/telegramBot.js');
 const { Licensing } = require("ent42/license.js");
 const { parseEntities } = require('./AIInterface.js');
@@ -13,6 +13,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
 
     this.packageJson = require('./package.json');
     this.T.MSG_ACCESS_DENIED = `Access denied 🥺\n\nPlease visit ${this.packageJson.homepage} for more information 🫶`;
+    this.T.MSG_GROUP_ACCESS_DENIED = `Group access denied 🥺\n\nPlease visit ${this.packageJson.homepage} for more information 🫶`;
   }
 
   async SetupContextCommands() {
@@ -32,8 +33,6 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     this.commands.addBotAdmin(T.CMD_HELP, this.handleHelp.bind(this), T.DESC_HELP);
     this.commands.addBotAdmin(T.CMD_ADDADMIN, this.handleAddAdmin.bind(this), T.DESC_ADDADMIN);
     this.commands.addBotAdmin(T.CMD_REMOVEADMIN, this.handleRemoveAdmin.bind(this), T.DESC_REMOVEADMIN);
-    this.commands.addBotAdmin(T.CMD_ADDWHITELISTEDGROUP, this.handleAddWhiteListedGroup.bind(this), T.DESC_ADDWHITELISTEDGROUP);
-    this.commands.addBotAdmin(T.CMD_REMOVEWHITELISTEDGROUP, this.handleRemoveWhiteListedGroup.bind(this), T.DESC_REMOVEWHITELISTEDGROUP);
     this.commands.addBotAdmin(T.CMD_SETPARAM, this.handleSetParameter.bind(this), T.DESC_SETPARAM);
     this.commands.addBotAdmin(T.CMD_GETPARAM, this.handleGetParameter.bind(this), T.DESC_GETPARAM);
 
@@ -112,34 +111,21 @@ class vxAssistBotBot extends CuteAiTelegramBot {
       if (this.isAuthorized(msg)) {
         this.updateCacheFromMessage(msg);
 
-        if (msg.text) {
-          var keepActionAliveTimer = setInterval(() => {
-            this.bot.sendChatAction(msg.chat.id, 'typing', { message_thread_id: msg.message_thread_id });
-          }, 3000);
+        var keepActionAliveTimer = setInterval(() => {
+          this.bot.sendChatAction(msg.chat.id, 'typing', { message_thread_id: msg.message_thread_id });
+        }, 3000);
 
-          return this.handleCommandOrComplete(msg, params).catch(error => {
-            return this.send(msg, error.message).catch(error => {
-              debugOut(error.message);
-            });
-          }).finally(() => {
-            clearInterval(keepActionAliveTimer);
-            this.saveToStorage();
+        return this.handleCommandOrComplete(msg, params).catch(error => {
+          debugOut(error.message);
+          return this.send(msg, error.message).catch(error => {
+            debugOut(error.message);
           });
-        }
+        }).finally(() => {
+          clearInterval(keepActionAliveTimer);
+          this.saveToStorage();
+        });
       } else {
-        debugOut(`Access denied for ${JSON.stringify(msg.from)}`);
-
-        if (msg.chat.type === 'supergroup' || msg.chat.type === 'group') {
-          debugOut(`Leaving unauthorized group ${JSON.stringify(msg.chat)}`);
-
-          return this.bot.leaveChat(msg.chat.id).catch(error => {
-            debugOut(error.message);
-          });            
-      }else{
-          return this.send(msg, this.T.MSG_ACCESS_DENIED).catch((error) => {
-            debugOut(error.message);
-          });
-        }      
+        return this.send(msg, this.T.MSG_ACCESS_DENIED);
       }
     } catch (error) {
       clearInterval(keepActionAliveTimer);
@@ -154,9 +140,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
   handleUserInfo(msg, params) {
     var licence = Licensing.getByConsumer(msg.from.id);
 
-    if (this.isBotOwner(msg.from.id) || this.isBotAdmin(msg.from.id)) {
-      licence = Licensing.getRootLicense();
-    } else if (!licence) {
+    if (!licence) {
       licence = { licId: 'UNLICENSED' };
     }
 
@@ -569,26 +553,6 @@ class vxAssistBotBot extends CuteAiTelegramBot {
       return this.send(msg, `@${username} has been removed from admin users.`);
     } else {
       return this.send(msg, `@${username} is not an admin user.`);
-    }
-  }
-
-  handleAddWhiteListedGroup(msg, params) {
-    const groupName = params[0];
-
-    this.whiteListedGroups.add(groupName);
-    this.saveToStorage();
-    return this.send(msg, `Group ${groupName} has been whitelisted.`);
-  }
-
-  handleRemoveWhiteListedGroup(msg, params) {
-    const groupName = params[0];
-
-    if (this.whiteListedGroups.has(groupName)) {
-      this.whiteListedGroups.delete(groupName);
-      this.saveToStorage();
-      return this.send(msg, `Group ${groupName} has been removed from the whitelist.`);
-    } else {
-      return this.send(msg, `Group ${groupName} is not whitelisted.`);
     }
   }
 }
