@@ -130,6 +130,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     } catch (error) {
       clearInterval(keepActionAliveTimer);
       debugOut(error.message);
+      this.shutdown();
     }
   }
 
