@@ -89,6 +89,11 @@ class AIInterface {
     }
   }
 
+  /**
+   * Retrieves the content of all system messages in memory.
+   *
+   * @returns {string[]} - An array containing the content of system messages.
+   */
   role() {
     var role = this.messages.filter(i => (i.role === "system"));
     role = role.map((i) => {
@@ -160,6 +165,12 @@ class AIInterface {
     this.queryCount++;
   }
 
+  /**
+ * Removes messages from memory that match the given text. If no text is provided, clears the entire memory.
+ *
+ * @param {string[]} text - The text to be matched against the messages in memory.
+ * @returns {void}
+ */
   wipeMemory(text) {
     if (text) {
       this.messages = this.messages.filter(i => {
@@ -176,19 +187,41 @@ class AIInterface {
     }
   }
 
+  /**
+ * Removes all non-system messages from memory.
+ *
+ * @returns {void}
+ */
   wipeContext() {
     this.messages = this.messages.filter(i => (i.role === "system"));
   }
 
+  /**
+ * Calculates the total number of tokens in the messages stored in memory.
+ *
+ * @returns {number} - The total number of tokens.
+ */
   tokenizeMemory() {
     return this.messages.reduce((count, message) => count + countTokens(message.content), 0);
   }
 
+  /**
+ * Encodes the given text and returns the length of the encoded string.
+ *
+ * @param {string} text - The text to be encoded.
+ * @returns {number} - The length of the encoded string.
+ */
   tokenize(text) {
     const encoded = encode(text);
     return encoded.length;
   };
 
+  /**
+ * Retrieves the last two non-system messages from memory and removes them, preserving the order of other messages.
+ *
+ * @throws {RangeError} - If the context is empty.
+ * @returns {Object} - An object containing the retrieved dialog messages.
+ */
   popDialog() {
     var dialog = {};
 
@@ -205,6 +238,12 @@ class AIInterface {
     return dialog;
   }
 
+  /**
+   * Reduces the messages in memory to fit within the specified maximum token limit.
+   *
+   * @param {number} maxTokens - The maximum number of tokens allowed.
+   * @returns {void}
+   */
   reduceContext(maxTokens) {
     let totalTokens = this.messages.reduce((count, message) => count + this.tokenize(message.content), 0);
 
@@ -290,6 +329,14 @@ class AIInterface {
     return content;
   }
 
+  /**
+ * Creates an image using the specified backend API.
+ *
+ * @param {string} prompt - The prompt for generating the image.
+ * @param {Object} parameter - The parameter object containing the Text2ImageAPI parameter.
+ * @returns {Promise} - A promise that resolves to the created image.
+ * @throws {Error} - If the image creation fails after multiple retries.
+ */
   async createImage(prompt, parameter) {
     const backends = {
       openAi: new AIOpenAI(),
@@ -312,6 +359,14 @@ class AIInterface {
     }
   }
 
+  /**
+ * Converts text to speech using the specified backend API.
+ *
+ * @param {string} prompt - The text to be converted to speech.
+ * @param {Object} parameter - The parameter object containing the Text2SpeechAPI parameter.
+ * @returns {Promise} - A promise that resolves to the generated speech.
+ * @throws {Error} - If the text-to-speech conversion fails after multiple retries.
+ */
   async text2Speech(prompt, parameter) {
 
     const backends = {
@@ -341,22 +396,22 @@ const parseEntities = (content, escape = true) => {
   let rPos = content.indexOf('```', 0);
 
   while (rPos !== -1) {
-      let entity = content.substring(lPos, rPos);
+    let entity = content.substring(lPos, rPos);
 
-      if (entity.startsWith('```')) {
-          rPos += 3;
-          entity = content.substring(lPos, rPos);
-          entities.push({ entity, type: entity.substring(3, entity.indexOf('\n')) });
-      } else {
-          entities.push({ entity: escape ? escapeMarkupV2String(entity) : entity, type: 'plain' });
-      }
-      lPos = rPos;
-      rPos = content.indexOf('```', rPos + 3);
+    if (entity.startsWith('```')) {
+      rPos += 3;
+      entity = content.substring(lPos, rPos);
+      entities.push({ entity, type: entity.substring(3, entity.indexOf('\n')) });
+    } else {
+      entities.push({ entity: escape ? escapeMarkupV2String(entity) : entity, type: 'plain' });
+    }
+    lPos = rPos;
+    rPos = content.indexOf('```', rPos + 3);
   }
 
   if (lPos < content.length) {
-      let entity = content.substring(lPos);
-      entities.push({ entity: escape ? escapeMarkupV2String(entity) : entity, type: 'plain' })
+    let entity = content.substring(lPos);
+    entities.push({ entity: escape ? escapeMarkupV2String(entity) : entity, type: 'plain' })
   }
 
   return entities.map((i) => i.entity);;
