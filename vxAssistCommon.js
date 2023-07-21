@@ -1,5 +1,11 @@
 const fs = require('fs');
 
+/**
+ * Reads the persona data from a file and returns an object with additional properties.
+ *
+ * @param {string} filePath - The path to the persona file.
+ * @returns {Object} - An object containing the persona data.
+ */
 function readPersonaFile(filePath) {
     const personaData = fs.readFileSync(filePath, 'utf-8');
     return {
@@ -11,6 +17,15 @@ function readPersonaFile(filePath) {
     };
 }
 
+/**
+ * Generates a filename based on the provided writer, editor, title, and suffix.
+ *
+ * @param {Object} writer - The writer object.
+ * @param {Object} editor - The editor object.
+ * @param {string} title - The title of the content.
+ * @param {string} suffix - The file suffix.
+ * @returns {string} - The generated filename.
+ */
 function generateFilename(writer, editor, title, suffix) {
     const writerName = writer.name.replace(/\s+/g, '_');
     const editorName = editor.name.replace(/\s+/g, '_');
@@ -18,16 +33,36 @@ function generateFilename(writer, editor, title, suffix) {
     return filename;
 }
 
+
+/**
+ * Saves the content to a file with the specified filename.
+ *
+ * @param {string} filename - The name of the file to save the content to.
+ * @param {string} content - The content to be saved.
+ * @returns {void}
+ */
 function saveContentToFile(filename, content) {
     fs.writeFileSync(filename, content, "utf-8");
     console.log(`Content saved to file: ${filename}`);
 }
 
+/**
+ * Reads the API key from a file.
+ *
+ * @param {string} filePath - The path to the API key file.
+ * @returns {string} - The API key.
+ */
 function readApiKey(filePath) {
     const apiKey = fs.readFileSync(filePath, 'utf-8');
     return apiKey;
 }
 
+/**
+ * Sanitizes a string by replacing special characters and removing non-alphanumeric characters.
+ *
+ * @param {string} input - The string to be sanitized.
+ * @returns {string} - The sanitized string.
+ */
 function sanitizeString(input) {
     const replacements = [
         ['ä', 'ae'],
@@ -48,6 +83,11 @@ function sanitizeString(input) {
     return sanitized;
 }
 
+/**
+ * Creates and returns an object with default parameters.
+ *
+ * @returns {Object} - An object with default parameters.
+ */
 function createDefaultParameters() {
     return {
         VisualStyle: null,
@@ -70,6 +110,12 @@ function createDefaultParameters() {
     };
 }
 
+/**
+ * Extracts a JSON object from the provided text.
+ *
+ * @param {string} text - The text to extract the JSON object from.
+ * @returns {Object|null} - The extracted JSON object, or null if no JSON object is found.
+ */
 function extractJSON(text) {
     const jsonRegex = /{(?:[^{}]|{[^{}]*})*}/; // Regular expression to match JSON object
     const match = text.match(jsonRegex);
@@ -88,6 +134,12 @@ function extractJSON(text) {
     return null;
 }
 
+/**
+ * Escapes special characters in a markup V2 string.
+ *
+ * @param {string} text - The markup V2 string to escape.
+ * @returns {string} - The escaped markup V2 string.
+ */
 function escapeMarkupV2String(text) {
     const specialChars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'];
     let escapedText = '';
@@ -104,12 +156,24 @@ function escapeMarkupV2String(text) {
     return escapedText;
 }
 
+/**
+ * Asynchronously sleeps for the specified number of milliseconds.
+ *
+ * @param {number} ms - The number of milliseconds to sleep.
+ * @returns {Promise<void>} - A promise that resolves after the specified time.
+ */
 async function sleep(ms) {
     return new Promise((resolve) => {
         setTimeout(resolve, ms);
     });
 }
 
+/**
+ * Creates a deep copy of the provided object.
+ *
+ * @param {any} obj - The object to create a deep copy of.
+ * @returns {any} - The deep copy of the object.
+ */
 function deepCopy(obj) {    
     if (typeof obj === 'object' && obj !== null) {
         const copy = Array.isArray(obj) ? [] : {};
@@ -124,7 +188,12 @@ function deepCopy(obj) {
     return obj;
 }
 
-
+/**
+ * Logs a debug message along with function call details.
+ *
+ * @param {string} msg - The debug message to be logged.
+ * @returns {void}
+ */
 function debugOut(msg) {
     debugOut.debugOutCallCounter ??= 0;
 
