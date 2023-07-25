@@ -91,7 +91,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     await super.SetupContextCommands();
   }
 
-  async handleCommandOrComplete(msg, params) {
+  async handleCommandOrComplete(msg) {
     const command = this.parseCommand(msg.text);
 
     if (command) {
@@ -117,9 +117,9 @@ class vxAssistBotBot extends CuteAiTelegramBot {
         }, 3000);
 
         return this.handleCommandOrComplete(msg, params).catch(error => {
-          debugOut(error.message);
+          debugOut(error.message + "\n" + JSON.stringify(msg, null, 2));
           return this.send(msg, error.message).catch(error => {
-            debugOut(error.message);
+            debugOut(error.message + "\n" + JSON.stringify(msg, null, 2));
           });
         }).finally(() => {
           clearInterval(keepActionAliveTimer);
