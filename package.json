@@ -1,5 +1,5 @@
 {
-  "name": "vxassistbot",
+  "name": "cubeAiBot",
   "version": "1.0.1-Alpha1",
   "description": "Your personal ai powered assistant on Telegram, Line and more!",
   "main": "app.js",

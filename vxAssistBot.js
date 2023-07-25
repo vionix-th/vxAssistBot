@@ -259,6 +259,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
   }
 
   handleHalt(msg, params) {
+    this.send(msg, 'Halted').catch(ex => { debugOut(ex.message) });
     this.shutdown(msg);
   }
 
@@ -560,4 +561,10 @@ class vxAssistBotBot extends CuteAiTelegramBot {
 }
 
 const bot = new vxAssistBotBot();
-bot.main();
+
+try {
+  bot.run();
+} catch (error) {
+  debugOut(error.message);
+  this.shutdown();
+}
