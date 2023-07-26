@@ -562,9 +562,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
 
 const bot = new vxAssistBotBot();
 
-try {
-  bot.run();
-} catch (error) {
+bot.run().catch(error => {
   debugOut(error.message);
-  this.shutdown();
-}
+  bot.shutdown();
+});
