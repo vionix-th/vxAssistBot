@@ -259,8 +259,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
   }
 
   handleHalt(msg, params) {
-    this.send(msg, 'Halted').catch(ex => { debugOut(ex.message) });
-    this.shutdown(msg);
+    this.shutdown();
   }
 
   handleExecuteCommand(msg, params) {
