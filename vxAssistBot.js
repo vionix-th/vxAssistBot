@@ -257,7 +257,11 @@ class vxAssistBotBot extends CuteAiTelegramBot {
   }
 
   handleHalt(msg, params) {
-    this.shutdown();
+    setTimeout(() => {
+      this.shutdown();
+    }, 3000);
+    
+    return 'Shutdown will be triggered in 3 seconds...';
   }
 
   handleExecuteCommand(msg, params) {
