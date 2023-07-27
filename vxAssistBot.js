@@ -95,8 +95,12 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     const command = this.parseCommand(msg.text);
 
     if (command) {
-      const { commandName, params } = command;
-      return this.executeCommand(msg, commandName, params);
+      return this.executeCommand(msg, command.commandName, command.params)
+        .then(response => {
+          if (response) {
+            return this.reply(msg, response);
+          }
+        });
     }
 
     return this.completeMessageConditional(msg).then(response => {
@@ -104,34 +108,28 @@ class vxAssistBotBot extends CuteAiTelegramBot {
         const entities = parseEntities(response.join('\n)'));
         return this.send(msg, entities.join(''), { parse_mode: 'MarkdownV2' });
       }
+      return response;
     });
   }
 
-  handleMessage(msg, params) {
-    try {
-      if (this.isAuthorized(msg)) {
-        this.updateCacheFromMessage(msg);
+  async handleMessage(msg, params) {
+    if (this.isAuthorized(msg)) {
+      this.updateCacheFromMessage(msg);
 
-        var keepActionAliveTimer = setInterval(() => {
-          this.bot.sendChatAction(msg.chat.id, 'typing', { message_thread_id: msg.message_thread_id });
-        }, 3000);
+      var keepActionAliveTimer = setInterval(() => {
+        this.bot.sendChatAction(msg.chat.id, 'typing', { message_thread_id: msg.message_thread_id });
+      }, 3000);
 
-        return this.handleCommandOrComplete(msg).catch(error => {
-          debugOut(error.message + "\n" + JSON.stringify(msg, null, 2));
-          return this.send(msg, error.message).catch(error => {
-            debugOut(error.message + "\n" + JSON.stringify(msg, null, 2));
-          });
-        }).finally(() => {
+      return this.handleCommandOrComplete(msg).catch(error => {
+        debugOut(error.message + "\n" + JSON.stringify(msg, null, 2));
+        return this.reply(msg, error.message + "\n" + JSON.stringify(msg, null, 2));
+      })
+        .finally(() => {
           clearInterval(keepActionAliveTimer);
           this.saveToStorage();
         });
-      } else {
-        return this.send(msg, this.T.MSG_ACCESS_DENIED);
-      }
-    } catch (error) {
-      clearInterval(keepActionAliveTimer);
-      debugOut(error.message);
-      this.shutdown();
+    } else {
+      return this.reply(msg, this.T.MSG_ACCESS_DENIED);
     }
   }
 
@@ -146,12 +144,12 @@ class vxAssistBotBot extends CuteAiTelegramBot {
       licence = { licId: 'UNLICENSED' };
     }
 
-    const licenceValid = Licensing.validate(licence);
+    const licenceValid = Licensing.validate(licence);     
 
     if (msg.chat.type === 'private') {
-      return this.send(msg, `User ID: ${msg.from.id}\nLicense ID: ${licence.licId}\nLicense valid: ${licenceValid}`);
+      return `User ID: ${msg.from.id}\nLicense ID: ${licence.licId}\nLicense valid: ${licenceValid}`;
     } else {
-      return this.send(msg, `User ID: ${msg.from.id}\nGroup ID: ${msg.chat.id}\nLicense ID: ${licence.licId}\nLicense valid: ${licenceValid}`);
+      return `User ID: ${msg.from.id}\nGroup ID: ${msg.chat.id}\nLicense ID: ${licence.licId}\nLicense valid: ${licenceValid}`;
     }
   }
 
