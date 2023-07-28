@@ -2,10 +2,9 @@
 .DS_Store
 build/
 
+db/
+
 *apikey*
-botStorage.json*
-botCaches.json*
-botLicenses.json*
 aiFactoryStorage.json
 aiFactoryStorage.testing.json
 
