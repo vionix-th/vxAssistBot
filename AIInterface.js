@@ -321,6 +321,7 @@ class AIInterface {
             debugOut(error.response.data);
           } else {
             debugOut(error.message);
+            debugOut(error.stack);
           }
         }
       }
