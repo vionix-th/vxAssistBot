@@ -217,7 +217,7 @@ class AIInterface {
   };
 
   /**
- * Retrieves the last two non-system messages from memory and removes them, preserving the order of other messages.
+ * Retrieves the last two non-system messages from memory and removes them
  *
  * @throws {RangeError} - If the context is empty.
  * @returns {Object} - An object containing the retrieved dialog messages.
