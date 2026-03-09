@@ -1,7 +1,7 @@
 {
-  "name": "vxassistbot-telegram-bot",
+  "name": "vxassistbot",
   "version": "1.0.1-Alpha1",
-  "description": "Telegram bot for AI-assisted chat, image generation, and licensed customer support workflows.",
+  "description": "vxAssistBot is a Telegram bot for AI-assisted chat, image generation, and licensed customer support workflows.",
   "main": "vxAssistBot.js",
   "scripts": {
     "start": "node ./vxAssistBot.js",

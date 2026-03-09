@@ -5,7 +5,7 @@ const { parseEntities } = require('./AIInterface.js');
 const fs = require('fs');
 const fileType = require('file-type');
 
-class vxAssistBotBot extends CuteAiTelegramBot {
+class VxAssistBot extends CuteAiTelegramBot {
   constructor() {
     super();
 
@@ -516,7 +516,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
   }
 }
 
-const bot = new vxAssistBotBot();
+const bot = new VxAssistBot();
 
 bot.run().catch(error => {
   debugOut(error.message);
