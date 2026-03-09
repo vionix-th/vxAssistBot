@@ -1,35 +1,37 @@
 {
-  "name": "cubeAiBot",
+  "name": "vxassistbot-telegram-bot",
   "version": "1.0.1-Alpha1",
-  "description": "Your personal ai powered assistant on Telegram, Line and more!",
-  "main": "app.js",
+  "description": "Telegram bot for AI-assisted chat, image generation, and licensed customer support workflows.",
+  "main": "vxAssistBot.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node ./vxAssistBot.js",
+    "test": "echo \"No automated tests are configured\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/entwickler42/vxAssistBot.git"
+    "url": "git+https://github.com/vionix-th/vxAssistBot.git"
   },
   "keywords": [
-    "chatgpt",
-    "author",
-    "editor"
+    "telegram",
+    "openai",
+    "support-bot",
+    "automation"
   ],
-  "author": "CuteCube <devel@cutecube.software>",
+  "author": "Vionix Consulting <git@vionix.cloud>",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/entwickler42/vxAssistBot/issues"
+    "url": "https://github.com/vionix-th/vxAssistBot/issues"
   },
-  "homepage": "http://shop.cutecube.software",
+  "homepage": "https://vionix.cloud",
   "dependencies": {
     "@huggingface/inference": "^2.5.1",
+    "axios": "^0.26.0",
     "colors": "^1.4.0",
     "commander": "^10.0.1",
-    "ffmpeg-static": "^5.1.0",
-    "ffprobe-static": "^3.1.0",
-    "fluent-ffmpeg": "^2.1.2",
+    "file-type": "^3.9.0",
     "gpt-3-encoder": "^1.1.4",
     "node-telegram-bot-api": "^0.61.0",
-    "openai": "^3.2.1"
+    "openai": "^3.2.1",
+    "uuid": "^3.3.2"
   }
 }

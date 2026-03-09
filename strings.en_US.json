@@ -21,8 +21,6 @@
   "DESC_INTRO": "Introduce the current AI role",
   "CMD_GENIMG": "genimg",
   "DESC_GENIMG": "Create an image using generative AI",
-  "CMD_GENVID": "genvid",
-  "DESC_GENVID": "Create a video using generative AI",
   "CMD_SETPARAM": "setparam",
   "DESC_SETPARAM": "Setup the AI's parameters",
   "CMD_GETPARAM": "getparam",

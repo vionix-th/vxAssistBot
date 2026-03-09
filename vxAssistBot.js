@@ -1,10 +1,8 @@
-const { spawn } = require('child_process');
-const { escapeMarkupV2String, sanitizeString, debugOut, } = require('./vxAssistCommon.js');
+const { escapeMarkupV2String, debugOut, } = require('./vxAssistCommon.js');
 const { CuteAiTelegramBot } = require('ent42/telegramBot.js');
 const { Licensing } = require("ent42/license.js");
 const { parseEntities } = require('./AIInterface.js');
 const fs = require('fs');
-const path = require('path');
 const fileType = require('file-type');
 
 class vxAssistBotBot extends CuteAiTelegramBot {
@@ -44,10 +42,6 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     this.commands.addUser(
       this.commands.addGroup(
         this.commands.addGroupAdmin(T.CMD_GENIMG, this.handleGenerateImage.bind(this), T.DESC_GENIMG)
-      ));
-    this.commands.addUser(
-      this.commands.addGroup(
-        this.commands.addGroupAdmin(T.CMD_GENVID, this.handleGenerateVideo.bind(this), T.DESC_GENVID)
       ));
     this.commands.addUser(
       this.commands.addGroup(
@@ -207,44 +201,6 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     debugOut('context removed > ' + dlg.response.content.substring(0, 20) + '...');
 
     return `Ok, the previous dialog never happened 🧠`;
-  }
-
-  handleGenerateVideo(msg, params) {
-    const { uniqueAi, config } = this.uniqueAiForChat(msg);
-    const args = params.join(' ');
-
-    if (args.length === 0) {
-      return 'You must provide a title for the story. e.g. /genvid Ruth fighting for freedom';
-    }
-
-    var basename = path.basename(sanitizeString(args)).substring(0, 32);
-    var filePath = './build/' + basename + `.txt`;
-    var videoPath = './build/' + basename + `.Portrait.mp4`;
-
-    const p = spawn('zsh', [config.VideoScript, filePath, args]);
-
-    var state = 'record_video';
-    const keepActionAliveTimer = setInterval(() => {
-      this.bot.sendChatAction(msg.chat.id, state, { message_thread_id: msg.message_thread_id });
-    }, 5000);
-
-    p.stderr.on('data', data => { console.log(data.toString()); });
-    p.stdout.on('data', data => { console.log(data.toString()); });
-
-    p.on('exit', code => {
-      if (fs.existsSync(videoPath)) {
-        state = 'upload_video';
-        return this.bot.sendVideo(msg.chat.id, videoPath,
-          { message_thread_id: msg.message_thread_id, reply_to_message_id: msg.message_id, caption: `Here is the video for: ${params.join(' ')}` },
-          { filename: basename })
-          .finally(() => {
-            clearInterval(keepActionAliveTimer);
-          });
-      } else {
-        clearInterval(keepActionAliveTimer);
-        return `Failed to create video for: ${args}`;
-      }
-    });
   }
 
   handleHalt(msg, params) {
@@ -469,7 +425,7 @@ class vxAssistBotBot extends CuteAiTelegramBot {
     const { uniqueAi, config } = this.uniqueAiForChat(msg);
 
     if (params.join(' ').length === 0) {
-      return this.send(msg, 'You must provide a title for the story. e.g. /getimg Hello World. Use the reply function to provide a title or issue a new /getimg command')
+      return this.send(msg, 'You must provide an image prompt. e.g. /genimg modern office workspace. Use the reply function to provide a prompt or issue a new /genimg command')
         .then((nextMsg) => {
           if (!this.aiIgnoreReply[nextMsg.chat.id]) { this.aiIgnoreReply[nextMsg.chat.id] = {} }
           this.aiIgnoreReply[nextMsg.chat.id][nextMsg.message_id] = nextMsg.message_thread_id ? nextMsg.message_thread_id : nextMsg.message_id;
